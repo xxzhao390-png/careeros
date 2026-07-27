@@ -1006,3 +1006,132 @@ html, body { height: 100%; overflow: hidden; }
   .daily-dashboard-grid { grid-template-columns: 1fr; }.career-square, .month-square { min-height: auto; }.career-counts { grid-template-columns: repeat(3,1fr); }
   .week-overview-head { align-items: flex-start; flex-direction: column; }.week-columns { grid-template-columns: repeat(7, 125px); }
 }
+
+/* V14 — requested visual refinements */
+.brand-glyph {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9a65ee 0%, #d77db8 52%, #f39a78 100%);
+}
+
+.collect-button {
+  background: linear-gradient(100deg, #955de9 0%, #cf78bd 52%, #f28f72 100%);
+}
+
+.collect-button .button-orb {
+  background: rgba(255,255,255,.2);
+}
+
+.companion-face,
+.multi-ring,
+.multi-ring span {
+  aspect-ratio: 1;
+}
+
+.multi-ring {
+  width: 156px;
+  height: 156px;
+  min-width: 156px;
+  justify-self: center;
+}
+
+.multi-ring span {
+  box-sizing: border-box;
+}
+
+.date-pills button.active {
+  background: linear-gradient(145deg, #e5defb, #c7b7f3);
+  color: #5f48a9;
+  border-color: rgba(120,88,198,.14);
+  box-shadow: 0 9px 20px rgba(105,78,174,.16);
+}
+
+.company-group {
+  padding: 22px 24px;
+}
+
+.company-head {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 16px;
+  padding-bottom: 18px;
+}
+
+.company-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  font-size: 14px;
+}
+
+.company-head span { font-size: 9px; }
+.company-head h3 { font-size: 21px; }
+.company-head small,
+.company-head > em { font-size: 10px; }
+
+.job-cards { gap: 10px; }
+
+.job-card {
+  min-height: 170px;
+  padding: 22px 24px 58px;
+  border-radius: 18px;
+  grid-template-columns: minmax(270px, 1.05fr) minmax(390px, 1.35fr);
+  gap: 34px;
+}
+
+.job-title-row > div > span { font-size: 10px; }
+.job-title-row h4 { margin: 9px 0 0; font-size: 17px; line-height: 1.35; }
+.title-keywords { margin-top: 12px; gap: 7px; }
+.title-keywords span { padding: 6px 9px; font-size: 9px; }
+.job-title-row > em { top: 16px; right: 18px; padding: 7px 10px; font-size: 9px; }
+.job-facts { gap: 24px; padding-right: 116px; }
+.job-facts small { font-size: 9px; }
+.job-facts strong,
+.official-link a { font-size: 12px; line-height: 1.45; }
+.job-actions { right: 18px; bottom: 15px; gap: 8px; }
+.job-actions button { padding: 8px 13px; font-size: 9px; }
+
+.card-gallery {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+  padding: 30px 8px 16px;
+}
+
+.topic-card.pinned-card,
+.topic-card.pinned-card:nth-child(2),
+.topic-card.pinned-card:nth-child(3) {
+  min-height: 260px;
+  padding: 40px 20px 20px;
+  border-width: 6px;
+  border-radius: 21px;
+}
+
+.topic-card.pinned-card:nth-child(even) {
+  transform: translateY(10px);
+}
+
+.topic-card.pinned-card .card-pin {
+  width: 24px;
+  height: 24px;
+  top: -18px;
+}
+
+.topic-card.pinned-card .card-number { font-size: 25px; }
+.topic-card.pinned-card > span { top: 22px; right: 18px; font-size: 8px; }
+.topic-card.pinned-card h3 { margin-top: 24px; font-size: 25px; }
+.topic-card.pinned-card p { font-size: 9px; line-height: 1.55; }
+
+@media (max-width: 1180px) {
+  .card-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .job-card { grid-template-columns: 1fr 1.15fr; gap: 22px; }
+}
+
+@media (max-width: 760px) {
+  .brand-glyph { width: 38px; height: 38px; flex-basis: 38px; }
+  .multi-ring { width: 145px; height: 145px; min-width: 145px; }
+  .job-card { grid-template-columns: 1fr; padding: 20px 18px 58px; }
+  .job-facts { padding-right: 0; }
+  .card-gallery { grid-template-columns: 1fr; }
+  .topic-card.pinned-card:nth-child(even) { transform: none; }
+}
