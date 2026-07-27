@@ -8,10 +8,10 @@ type View = "today" | "jobs" | "knowledge" | "resources" | "tasks" | "thoughts";
 const navigation: { id: View; label: string; mark: string }[] = [
   { id: "today", label: "今日", mark: "⌂" },
   { id: "tasks", label: "任务", mark: "✓" },
-  { id: "jobs", label: "求职", mark: "◎" },
-  { id: "knowledge", label: "知识", mark: "◇" },
-  { id: "resources", label: "资料", mark: "▱" },
-  { id: "thoughts", label: "思考", mark: "✦" },
+  { id: "jobs", label: "求职", mark: "●" },
+  { id: "knowledge", label: "知识", mark: "✦" },
+  { id: "resources", label: "资料", mark: "▰" },
+  { id: "thoughts", label: "思考", mark: "⌁" },
 ];
 
 const tasks = [
@@ -80,6 +80,7 @@ export default function Home() {
               <button
                 key={item.id}
                 className={`nav-item ${view === item.id ? "active" : ""}`}
+                data-view={item.id}
                 onClick={() => setView(item.id)}
                 type="button"
                 data-date={item.id === "today" ? todayLabel : undefined}
@@ -536,7 +537,16 @@ function KnowledgeView({ onNotify }: { onNotify: (message: string) => void }) {
         </section>
       ) : (
         <section className="card-gallery">
-          {cards.map((card) => <article key={card.title} className={`topic-card ${card.tone}`}><span>{card.level}</span><h3>{card.title}</h3><p>{card.desc}</p><button type="button">打开卡片 ↗</button></article>)}
+          {cards.map((card, index) => (
+            <article key={card.title} className={`topic-card pinned-card ${card.tone}`}>
+              <i className="card-pin" aria-hidden="true" />
+              <div className="card-number">0{index + 1}</div>
+              <span>{card.level}</span>
+              <h3>{card.title}</h3>
+              <p>{card.desc}</p>
+              <button type="button">打开卡片 <b>↗</b></button>
+            </article>
+          ))}
         </section>
       )}
     </div>
@@ -552,12 +562,15 @@ function ResourcesView({ onNotify }: { onNotify: (message: string) => void }) {
       </section>
       <section className="resource-grid">
         {resources.map((item, index) => (
-          <article className={`resource-card resource-${index + 1}`} key={item[0]}>
-            <div className="resource-top"><span>{item[1]}</span><button type="button">···</button></div>
-            <h3>{item[0]}</h3>
-            <p>{index === 0 ? "理解检索、切分、向量化与生成之间的完整关系。" : index === 1 ? "用于观察一个个人 Agent 如何组织工具和状态。" : "记录值得关注的产品功能与应用变化。"}</p>
-            <div className="progress-track"><span style={{ width: item[2] }} /></div>
-            <div className="resource-meta"><span>{item[2]}</span><em>{item[3]}</em></div>
+          <article className={`resource-card resource-folder resource-${index + 1}`} key={item[0]}>
+            <div className="folder-label"><span>{item[1]}</span><small>0{index + 1}</small></div>
+            <div className="folder-paper">
+              <div className="resource-top"><span>{item[3]}</span><button type="button" aria-label="更多操作">•••</button></div>
+              <h3>{item[0]}</h3>
+              <p>{index === 0 ? "理解检索、切分、向量化与生成之间的完整关系。" : index === 1 ? "用于观察一个个人 Agent 如何组织工具和状态。" : "记录值得关注的产品功能与应用变化。"}</p>
+              <div className="progress-track"><span style={{ width: item[2] }} /></div>
+              <div className="resource-meta"><span>阅读进度</span><em>{item[2]}</em></div>
+            </div>
           </article>
         ))}
       </section>
