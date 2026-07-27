@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 
 type View = "today" | "jobs" | "knowledge" | "resources" | "tasks" | "thoughts";
 
 const navigation: { id: View; label: string; mark: string }[] = [
-  { id: "today", label: "今日", mark: "01" },
-  { id: "tasks", label: "任务", mark: "02" },
-  { id: "jobs", label: "秋招", mark: "03" },
-  { id: "knowledge", label: "知识", mark: "04" },
-  { id: "resources", label: "资料", mark: "05" },
-  { id: "thoughts", label: "思考", mark: "06" },
+  { id: "today", label: "今日", mark: "⌂" },
+  { id: "tasks", label: "任务", mark: "✓" },
+  { id: "jobs", label: "求职", mark: "◎" },
+  { id: "knowledge", label: "知识", mark: "◇" },
+  { id: "resources", label: "资料", mark: "▱" },
+  { id: "thoughts", label: "思考", mark: "✦" },
 ];
 
 const tasks = [
@@ -37,6 +38,7 @@ export default function Home() {
   const [collectOpen, setCollectOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mascotMessage, setMascotMessage] = useState("");
   const [toast, setToast] = useState("");
 
   const title = useMemo(
@@ -115,7 +117,17 @@ export default function Home() {
                   if (!event.currentTarget.contains(document.activeElement)) setSearchOpen(false);
                 }}
               >
-                <span className="companion-face" aria-hidden="true"><i /><i /></span>
+                <button
+                  className="companion-face"
+                  type="button"
+                  aria-label="打开搜索助手"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setSearchOpen(true);
+                    setMascotMessage("今天也在一点点变厉害 ✦");
+                    window.setTimeout(() => setMascotMessage(""), 2400);
+                  }}
+                ><i /><i /></button>
                 <input
                   aria-label="全局搜索"
                   placeholder="搜索岗位、知识、资料…"
@@ -133,7 +145,6 @@ export default function Home() {
                 />
                 <span className="search-arrow">↗</span>
               </label>
-              <button className="quiet-icon" type="button" aria-label="通知">◌</button>
             </div>
           </header>
 
@@ -208,6 +219,7 @@ export default function Home() {
       )}
 
       {toast && <div className="toast" role="status">{toast}</div>}
+      {mascotMessage && <div className="mascot-message" role="status">{mascotMessage}</div>}
     </main>
   );
 }
@@ -223,10 +235,7 @@ function TodayView({
   onNavigate: (view: View) => void;
   onNotify: (message: string) => void;
 }) {
-  const dates = [
-    ["周三", "23"], ["周四", "24"], ["周五", "25"], ["周六", "26"], ["今天", "27"], ["周一", "28"], ["周二", "29"],
-  ];
-  const [selectedDate, setSelectedDate] = useState("27");
+  const [selectedDate, setSelectedDate] = useState("2026-07-27");
   const [reviewIndex, setReviewIndex] = useState(0);
   const reviews = [
     { term: "RAG", prompt: "为什么 RAG 能减少模型一本正经地胡说？", answer: "因为它在生成前引入了可核验的外部资料，让回答不只依赖模型参数中的记忆。" },
@@ -234,74 +243,88 @@ function TodayView({
     { term: "Embedding", prompt: "为什么相似文本的向量更接近？", answer: "模型将语义关系编码进高维空间，使含义相近的内容在距离计算中更加接近。" },
   ];
   const review = reviews[reviewIndex];
+  const current = new Date(`${selectedDate}T00:00:00`);
+  const monday = new Date(current);
+  const dayOffset = (current.getDay() + 6) % 7;
+  monday.setDate(current.getDate() - dayOffset);
+  const weekDates = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return {
+      iso: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+      day: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][index],
+      date: String(date.getDate()),
+    };
+  });
+  function shiftWeek(offset: number) {
+    const next = new Date(current);
+    next.setDate(current.getDate() + offset * 7);
+    setSelectedDate(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`);
+  }
 
   return (
     <div className="view-stack">
       <section className="date-switcher" aria-label="选择日期">
         <div>
           <span className="eyebrow">DAILY ARCHIVE</span>
-          <strong>{selectedDate === "27" ? "今天" : `7月${selectedDate}日`}的记录</strong>
+          <strong>{current.getMonth() + 1}月{current.getDate()}日的记录</strong>
         </div>
-        <div className="date-pills">
-          {dates.map(([day, date]) => (
+        <div className="calendar-controls">
+          <button className="week-arrow" type="button" onClick={() => shiftWeek(-1)} aria-label="上一周">←</button>
+          <div className="date-pills">
+          {weekDates.map(({ day, date, iso }) => (
             <button
               type="button"
-              key={date}
-              className={selectedDate === date ? "active" : ""}
+              key={iso}
+              className={selectedDate === iso ? "active" : ""}
               onClick={() => {
-                setSelectedDate(date);
-                onNotify(date === "27" ? "已回到今天" : `正在查看 7 月 ${date} 日`);
+                setSelectedDate(iso);
+                onNotify(`正在查看 ${current.getMonth() + 1} 月 ${date} 日`);
               }}
             >
               <span>{day}</span><strong>{date}</strong>
             </button>
           ))}
+          </div>
+          <button className="week-arrow" type="button" onClick={() => shiftWeek(1)} aria-label="下一周">→</button>
+          <label className="date-picker-button">
+            <span>选择日期</span>
+            <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+          </label>
         </div>
       </section>
 
       <section className="hero-grid">
-        <article className="progress-panel">
-          <div className="panel-heading">
-            <div><span className="eyebrow">TODAY PROGRESS</span><h3>今日推进</h3></div>
-            <small>{selectedDate === "27" ? "实时更新" : `7月${selectedDate}日归档`}</small>
-          </div>
-          <div className="progress-rings">
-            <button type="button" onClick={() => onNavigate("knowledge")}>
-              <span className="progress-ring knowledge-ring"><strong>68%</strong></span>
-              <em>知识</em><small>2 张卡片已更新</small>
-            </button>
-            <button type="button" onClick={() => onNavigate("tasks")}>
-              <span className="progress-ring task-ring"><strong>42%</strong></span>
-              <em>任务</em><small>1 / 3 已完成</small>
-            </button>
-            <button type="button" onClick={() => onNavigate("jobs")}>
-              <span className="progress-ring job-ring"><strong>35%</strong></span>
-              <em>秋招</em><small>2 个岗位待处理</small>
-            </button>
-          </div>
-          <div className="progress-note">
-            <span>今日重点</span>
-            <strong>{selectedDate === "27" ? "完成知识助手闭环，整理一条重点 JD。" : "历史记录仅展示当日实际保存的内容。"}</strong>
-          </div>
-        </article>
-
-        <article className="focus-panel">
+        <article className="focus-panel task-primary">
           <div className="panel-heading">
             <div><span className="eyebrow">TODAY</span><h3>今日任务</h3></div>
             <button type="button" onClick={() => onNavigate("tasks")}>查看全部 ↗</button>
           </div>
           <div className="task-list">
             {tasks.map((task) => (
-              <button
-                type="button"
-                key={task.id}
-                className={`task-row ${done.includes(task.id) ? "done" : ""}`}
-                onClick={() => onToggle(task.id)}
-              >
+              <button type="button" key={task.id} className={`task-row ${done.includes(task.id) ? "done" : ""}`} onClick={() => onToggle(task.id)}>
                 <span className="check">{done.includes(task.id) ? "✓" : ""}</span>
                 <span><strong>{task.title}</strong><small>{task.meta}</small></span>
+                <em>{task.id === 1 ? "求职" : task.id === 2 ? "知识" : "项目"}</em>
               </button>
             ))}
+          </div>
+        </article>
+
+        <article className="progress-panel compact-progress">
+          <div className="panel-heading">
+            <div><span className="eyebrow">TODAY PROGRESS</span><h3>今日推进</h3></div>
+            <small>3 个维度</small>
+          </div>
+          <div className="concentric-progress">
+            <div className="progress-legend">
+              <button type="button" onClick={() => onNavigate("knowledge")}><i className="purple" /><span>知识<strong>68%</strong></span></button>
+              <button type="button" onClick={() => onNavigate("tasks")}><i className="blue" /><span>任务<strong>42%</strong></span></button>
+              <button type="button" onClick={() => onNavigate("jobs")}><i className="orange" /><span>求职<strong>35%</strong></span></button>
+            </div>
+            <div className="multi-ring" aria-label="知识68%，任务42%，求职35%">
+              <span className="outer-ring" /><span className="middle-ring" /><span className="inner-ring" />
+            </div>
           </div>
         </article>
       </section>
@@ -311,11 +334,6 @@ function TodayView({
           <span className="eyebrow">YESTERDAY REVIEW</span>
           <h2>每日复习知识</h2>
           <p>把昨天搜索过的概念重新翻一遍。先回答问题，再翻开卡片核对理解。</p>
-          <div className="review-controls">
-            <button type="button" onClick={() => setReviewIndex((reviewIndex - 1 + reviews.length) % reviews.length)}>←</button>
-            <span>{String(reviewIndex + 1).padStart(2, "0")} / {String(reviews.length).padStart(2, "0")}</span>
-            <button type="button" onClick={() => setReviewIndex((reviewIndex + 1) % reviews.length)}>→</button>
-          </div>
         </div>
         <div className="review-deck">
           <div className="review-card ghost ghost-two" />
@@ -324,7 +342,14 @@ function TodayView({
             <span className="review-term">{review.term}</span>
             <h3>{review.prompt}</h3>
             <p>{review.answer}</p>
-            <div>
+            <dl className="review-details">
+              <div><dt>核心判断</dt><dd>{reviewIndex === 0 ? "外部知识 + 可追溯依据" : reviewIndex === 1 ? "统一连接工具与数据" : "语义映射与相似度检索"}</dd></div>
+              <div><dt>实际例子</dt><dd>{reviewIndex === 0 ? "用企业内部文档回答制度问题" : reviewIndex === 1 ? "让模型读取日历并创建日程" : "从知识库中找出相近段落"}</dd></div>
+              <div><dt>来源</dt><dd>昨日知识助手 · 已保存卡片</dd></div>
+            </dl>
+            <div className="review-card-actions">
+              <button className="review-prev" type="button" onClick={() => setReviewIndex((reviewIndex - 1 + reviews.length) % reviews.length)}>← 上一张</button>
+              <span>{String(reviewIndex + 1).padStart(2, "0")} / {String(reviews.length).padStart(2, "0")}</span>
               <button type="button" onClick={() => onNotify("已标记为需要再复习")}>还不熟</button>
               <button className="review-next" type="button" onClick={() => setReviewIndex((reviewIndex + 1) % reviews.length)}>理解了，下一张 →</button>
             </div>
@@ -370,9 +395,7 @@ function JobsView({ onNotify, onNavigate }: { onNotify: (message: string) => voi
             <button key={item} className={`filter ${category === item ? "active" : ""}`} type="button" onClick={() => setCategory(item)}>{item}</button>
           ))}
         </div>
-        <button className="primary-button" type="button" onClick={() => onNotify("打开 JD 录入")}>
-          <span>添加 JD</span><span className="button-orb">＋</span>
-        </button>
+        <button className="add-jd-round" type="button" aria-label="添加 JD" onClick={() => onNotify("打开 JD 录入")}>＋</button>
       </section>
 
       <section className="company-groups">
@@ -493,16 +516,88 @@ function ResourcesView({ onNotify }: { onNotify: (message: string) => void }) {
 }
 
 function TasksView({ done, setDone }: { done: number[]; setDone: (value: number[]) => void }) {
+  const [scope, setScope] = useState<"today" | "week">("today");
+  const [taskModal, setTaskModal] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [celebrate, setCelebrate] = useState("");
+  const weekTasks = [
+    { id: 11, title: "完成 CareerOS 交互原型修改", meta: "周二前 · 高优先级" },
+    { id: 12, title: "整理本周新增公司的招聘入口", meta: "周四前 · 求职" },
+    { id: 13, title: "复习 5 张知识卡片", meta: "本周 · 知识" },
+    { id: 14, title: "补全项目技术说明", meta: "周日 · 项目" },
+  ];
+  const visibleTasks = scope === "today" ? tasks : weekTasks;
+  function toggleTask(id: number) {
+    if (!done.includes(id)) {
+      setDone([...done, id]);
+      setCelebrate(["做得漂亮！", "又推进了一步 ✦", "完成啦，给你放个小礼花！"][id % 3]);
+      window.setTimeout(() => setCelebrate(""), 2300);
+    } else {
+      setDone(done.filter((item) => item !== id));
+    }
+  }
   return (
     <div className="view-stack">
       <section className="task-board">
-        <div className="panel-heading"><div><span className="eyebrow">FOCUS LIST</span><h3>今天与本周</h3></div><button type="button">＋ 新建任务</button></div>
-        {tasks.map((task, index) => (
-          <button className={`board-task ${done.includes(task.id) ? "done" : ""}`} type="button" key={task.id} onClick={() => setDone(done.includes(task.id) ? done.filter((id) => id !== task.id) : [...done, task.id])}>
-            <span className="task-index">0{index + 1}</span><span className="check">{done.includes(task.id) ? "✓" : ""}</span><span><strong>{task.title}</strong><small>{task.meta}</small></span><em>{index === 0 ? "秋招" : index === 1 ? "知识" : "项目"}</em>
-          </button>
-        ))}
+        <div className="task-board-head">
+          <div><span className="eyebrow">REMINDERS</span><h3>任务清单</h3></div>
+          <div className="task-scope">
+            <button className={scope === "today" ? "active" : ""} type="button" onClick={() => setScope("today")}>今日任务</button>
+            <button className={scope === "week" ? "active" : ""} type="button" onClick={() => setScope("week")}>本周任务</button>
+          </div>
+          <button className="new-task-button" type="button" onClick={() => { setEditing(null); setTaskModal(true); }}>＋ 新建</button>
+        </div>
+        <div className="reminder-list">
+          {visibleTasks.map((task, index) => (
+            <article className={`reminder-row ${done.includes(task.id) ? "done" : ""}`} key={task.id}>
+              <button className="reminder-check" type="button" onClick={() => toggleTask(task.id)}>{done.includes(task.id) ? "✓" : ""}</button>
+              <div><strong>{task.title}</strong><small>{task.meta}</small></div>
+              <span className={`priority priority-${(index % 3) + 1}`} />
+              <button className="edit-task" type="button" onClick={() => { setEditing(task.id); setTaskModal(true); }}>修改</button>
+            </article>
+          ))}
+        </div>
       </section>
+
+      <section className="task-archive">
+        <div className="archive-heading"><div><span className="eyebrow">DAILY ARCHIVE</span><h3>每日任务归档</h3></div><label><span>⌕</span><input placeholder="检索历史任务…" /></label></div>
+        <div className="folder-row">
+          {[
+            ["7月26日", "完成 4 / 5", "#dfe7ff"],
+            ["7月25日", "完成 3 / 4", "#f0ddff"],
+            ["7月24日", "完成 5 / 5", "#dff1e6"],
+          ].map(([date, count, color]) => (
+            <button className="archive-folder" type="button" key={date} style={{ "--folder-color": color } as CSSProperties}>
+              <span className="folder-tab" /><strong>{date}</strong><small>{count}</small><em>打开归档 ↗</em>
+            </button>
+          ))}
+        </div>
+        <p>每天结束后，系统会把当天任务状态打包进日期文件夹，之后可以按标题、关联模块或日期检索。</p>
+      </section>
+
+      {celebrate && (
+        <div className="celebration" role="status">
+          <div className="confetti">{Array.from({ length: 14 }, (_, index) => <i key={index} style={{ "--i": index } as CSSProperties} />)}</div>
+          <span className="companion-face"><i /><i /></span><strong>{celebrate}</strong>
+        </div>
+      )}
+
+      {taskModal && (
+        <div className="modal-layer task-modal-layer" role="presentation" onMouseDown={() => setTaskModal(false)}>
+          <section className="task-editor" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-head"><div><span className="eyebrow">REMINDER</span><h2>{editing ? "修改任务" : "新建任务"}</h2></div><button type="button" onClick={() => setTaskModal(false)}>×</button></div>
+            <input className="task-title-input" autoFocus defaultValue={editing ? visibleTasks.find((task) => task.id === editing)?.title : ""} placeholder="任务名称" />
+            <textarea placeholder="备注，例如这项任务为什么重要…" />
+            <div className="reminder-options">
+              <button type="button"><span>日期</span><strong>今天 ›</strong></button>
+              <button type="button"><span>优先级</span><strong>高 ›</strong></button>
+              <button type="button"><span>所属清单</span><strong>{scope === "today" ? "今日任务" : "本周任务"} ›</strong></button>
+              <button type="button"><span>关联内容</span><strong>无 ›</strong></button>
+            </div>
+            <div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setTaskModal(false)}>取消</button><button className="primary-button" type="button" onClick={() => setTaskModal(false)}><span>{editing ? "保存修改" : "添加任务"}</span><span className="button-orb">✓</span></button></div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
