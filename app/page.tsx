@@ -369,15 +369,6 @@ function TodayView({
       </section>
 
       <section className="daily-dashboard-grid">
-        <article className="career-square">
-          <div className="square-head"><div><span className="eyebrow">CAREER TRACK</span><h3>求职进程</h3></div><button type="button" onClick={() => onNavigate("jobs")}>↗</button></div>
-          <div className="career-counts">
-            <span><strong>08</strong>关注岗位</span><span><strong>03</strong>准备中</span><span><strong>02</strong>已投递</span>
-          </div>
-          <div className="career-flow"><i className="done" /><i className="done" /><i className="active" /><i /><i /></div>
-          <div className="recent-job"><small>最近更新</small><strong>百度 · AI 产品运营实习生</strong><span>准备中 · 今天 10:20</span></div>
-        </article>
-
         <article className="knowledge-deposit">
           <div className="square-head"><div><span className="eyebrow">TODAY DEPOSIT</span><h3>今日知识沉淀</h3></div><button type="button" onClick={() => onNavigate("knowledge")}>查看知识库 ↗</button></div>
           <p>今天共搜索 3 个概念，沉淀 2 张知识卡片，补充 1 条个人理解。</p>
