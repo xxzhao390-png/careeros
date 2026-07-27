@@ -393,50 +393,13 @@ body {
   gap: 18px;
   align-items: stretch;
 }
-.today-first-row > .date-switcher,
 .today-first-row > .task-primary,
-.today-first-row > .compact-progress {
+.today-first-row > .compact-progress,
+.today-first-row > .first-row-calendar {
   min-width: 0;
   min-height: 318px;
   height: 100%;
 }
-.today-first-row > .date-switcher {
-  padding: 25px;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  background: rgba(255,255,255,.88);
-  box-shadow: 0 14px 36px rgba(74,83,94,.06), inset 0 1px 0 white;
-}
-.today-first-row .date-switcher > div:first-child strong {
-  display: block;
-  margin-top: 7px;
-  font-size: 20px;
-  letter-spacing: -.04em;
-}
-.today-first-row .calendar-controls {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 32px;
-  gap: 6px;
-  margin-top: 22px;
-}
-.today-first-row .date-pills {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
-}
-.today-first-row .date-pills button {
-  min-width: 0;
-  width: 100%;
-  padding-inline: 2px;
-}
-.today-first-row .date-picker-button {
-  grid-column: 1 / -1;
-  width: 100%;
-  justify-content: center;
-  margin-top: 5px;
-}
-.today-first-row .week-arrow { width: 32px; height: 42px; }
 .today-first-row .task-primary,
 .today-first-row .compact-progress { padding: 25px; }
 .today-first-row .task-primary .task-row {
@@ -451,15 +414,27 @@ body {
   gap: 8px;
 }
 .today-first-row .multi-ring { width: 150px; height: 150px; }
+.first-row-calendar {
+  min-height: 318px;
+  padding: 25px;
+  border-radius: 28px;
+}
+.first-row-calendar .square-head h3 { font-size: 18px; }
+.first-row-calendar .square-head > em { padding: 5px 7px; font-size: 7px; }
+.first-row-calendar .mini-calendar-head { margin-top: 15px; }
+.first-row-calendar .mini-calendar-head,
+.first-row-calendar .mini-calendar { gap: 4px; }
+.first-row-calendar .mini-calendar { margin-top: 6px; }
+.first-row-calendar .mini-calendar button { border-radius: 7px; font-size: 7px; }
 
 @media (max-width: 1180px) {
   .today-first-row { grid-template-columns: 1fr 1fr; }
-  .today-first-row > .date-switcher { grid-column: 1 / -1; min-height: auto; }
+  .today-first-row > .first-row-calendar { grid-column: 1 / -1; min-height: auto; }
 }
 @media (max-width: 760px) {
   .app-shell, .app-shell.sidebar-collapsed { grid-template-columns: 1fr; }
   .today-first-row { grid-template-columns: 1fr; }
-  .today-first-row > .date-switcher { grid-column: auto; }
+  .today-first-row > .first-row-calendar { grid-column: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

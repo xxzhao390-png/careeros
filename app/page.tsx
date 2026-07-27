@@ -266,7 +266,6 @@ function TodayView({
 
   return (
     <div className="view-stack">
-      <section className="today-first-row">
       <section className="date-switcher" aria-label="选择日期">
         <div>
           <span className="eyebrow">DAILY ARCHIVE</span>
@@ -297,6 +296,7 @@ function TodayView({
         </div>
       </section>
 
+      <section className="today-first-row">
         <article className="focus-panel task-primary">
           <div className="panel-heading">
             <div><span className="eyebrow">TODAY</span><h3>今日任务</h3></div>
@@ -327,6 +327,19 @@ function TodayView({
             <div className="multi-ring" aria-label="知识68%，任务42%，求职35%">
               <span className="outer-ring" /><span className="middle-ring" /><span className="inner-ring" />
             </div>
+          </div>
+        </article>
+
+        <article className="month-square first-row-calendar">
+          <div className="square-head"><div><span className="eyebrow">CHECK-IN</span><h3>2026年 7月</h3></div><em>连续记录 9 天</em></div>
+          <div className="mini-calendar-head">{["一","二","三","四","五","六","日"].map((day) => <span key={day}>{day}</span>)}</div>
+          <div className="mini-calendar">
+            {Array.from({ length: 35 }, (_, index) => {
+              const day = index - 2;
+              const valid = day >= 1 && day <= 31;
+              const past = valid && day < 27;
+              return <button type="button" key={index} className={`${!valid ? "empty" : ""} ${past ? "checked" : ""} ${day === 27 ? "today" : ""}`}>{valid ? day : ""}</button>;
+            })}
           </div>
         </article>
       </section>
@@ -367,19 +380,6 @@ function TodayView({
           </div>
           <div className="career-flow"><i className="done" /><i className="done" /><i className="active" /><i /><i /></div>
           <div className="recent-job"><small>最近更新</small><strong>百度 · AI 产品运营实习生</strong><span>准备中 · 今天 10:20</span></div>
-        </article>
-
-        <article className="month-square">
-          <div className="square-head"><div><span className="eyebrow">CHECK-IN</span><h3>2026年 7月</h3></div><em>连续记录 9 天</em></div>
-          <div className="mini-calendar-head">{["一","二","三","四","五","六","日"].map((day) => <span key={day}>{day}</span>)}</div>
-          <div className="mini-calendar">
-            {Array.from({ length: 35 }, (_, index) => {
-              const day = index - 2;
-              const valid = day >= 1 && day <= 31;
-              const past = valid && day < 27;
-              return <button type="button" key={index} className={`${!valid ? "empty" : ""} ${past ? "checked" : ""} ${day === 27 ? "today" : ""}`}>{valid ? day : ""}</button>;
-            })}
-          </div>
         </article>
 
         <article className="knowledge-deposit">
