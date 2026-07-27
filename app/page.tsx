@@ -24,12 +24,8 @@ const cards = [
   { title: "RAG", desc: "通过检索外部知识，为大模型生成提供更可靠的上下文。", level: "已理解", tone: "cyan" },
   { title: "Agent", desc: "能够围绕目标选择工具、保持状态并执行多步骤任务。", level: "刚遇到", tone: "lilac" },
   { title: "Embedding", desc: "将文本或其他内容映射为可比较的向量表示。", level: "能解释", tone: "lime" },
-];
-
-const resources = [
-  ["RAG 入门与工程实践", "PDF", "35%", "学习中"],
-  ["开源 Agent 项目", "GitHub", "0%", "待读"],
-  ["AI 厂商产品更新", "网页", "100%", "已完成"],
+  { title: "MCP", desc: "用统一协议连接模型、工具与外部数据。", level: "学习中", tone: "peach" },
+  { title: "Workflow", desc: "把稳定任务拆成可重复执行的步骤与节点。", level: "已收藏", tone: "violet" },
 ];
 
 export default function Home() {
@@ -109,7 +105,7 @@ export default function Home() {
           <header className="topbar">
             <div>
               <span className="eyebrow">PERSONAL WORKSPACE · 2026</span>
-              <h1>{title}</h1>
+              <h1 className={view === "today" ? "today-hover-title" : ""} data-date={view === "today" ? todayLabel : undefined}><span>{title}</span></h1>
             </div>
             <div className="top-actions">
               <label
@@ -122,7 +118,7 @@ export default function Home() {
                 <button
                   className="companion-face"
                   type="button"
-                  aria-label="打开搜索助手"
+                  aria-label="打开蝴蝶搜索助手"
                   onClick={(event) => {
                     event.preventDefault();
                     setSearchOpen(true);
@@ -545,12 +541,39 @@ function KnowledgeView({ onNotify }: { onNotify: (message: string) => void }) {
 }
 
 function ResourcesView({ onNotify }: { onNotify: (message: string) => void }) {
+  const [resourceTab, setResourceTab] = useState<"学习资料" | "我的项目" | "待整理">("学习资料");
+  const resourceGroups = {
+    学习资料: [
+      ["RAG 与检索增强", "6 项", "35%", "学习中"],
+      ["Agent 与工作流", "4 项", "20%", "学习中"],
+      ["产品与行业观察", "9 项", "70%", "持续更新"],
+      ["面试知识准备", "5 项", "48%", "复习中"],
+    ],
+    我的项目: [
+      ["CareerOS 产品档案", "8 项", "80%", "进行中"],
+      ["AI 内容工作流", "5 项", "60%", "进行中"],
+      ["品牌视觉案例", "12 项", "100%", "已归档"],
+      ["个人 Skill 实验", "7 项", "42%", "迭代中"],
+    ],
+    待整理: [
+      ["本周临时收集", "7 项", "0%", "待分类"],
+      ["未命名资料", "3 项", "0%", "待命名"],
+    ],
+  } as const;
+  const resources = resourceGroups[resourceTab];
   return (
     <div className="view-stack">
       <section className="section-toolbar">
-        <div className="filter-row"><button className="filter active" type="button">学习资料</button><button className="filter" type="button">我的项目</button><button className="filter" type="button">待整理 02</button></div>
+        <div className="filter-row">
+          {(["学习资料", "我的项目", "待整理"] as const).map((tab) => (
+            <button className={`filter ${resourceTab === tab ? "active" : ""}`} type="button" key={tab} onClick={() => setResourceTab(tab)}>
+              {tab}{tab === "待整理" ? " 02" : ""}
+            </button>
+          ))}
+        </div>
         <button className="primary-button" type="button" onClick={() => onNotify("打开资料上传")}><span>添加资料</span><span className="button-orb">＋</span></button>
       </section>
+      <p className="resource-guide">文件夹用于主题分类；每个文件夹可收纳多份 PDF、网页、笔记或项目文件。新上传内容会先进入「待整理」。</p>
       <section className="resource-grid">
         {resources.map((item, index) => (
           <article className={`resource-card resource-folder resource-${index + 1}`} key={item[0]}>
@@ -558,7 +581,7 @@ function ResourcesView({ onNotify }: { onNotify: (message: string) => void }) {
             <div className="folder-paper">
               <div className="resource-top"><span>{item[3]}</span><button type="button" aria-label="更多操作">•••</button></div>
               <h3>{item[0]}</h3>
-              <p>{index === 0 ? "理解检索、切分、向量化与生成之间的完整关系。" : index === 1 ? "用于观察一个个人 Agent 如何组织工具和状态。" : "记录值得关注的产品功能与应用变化。"}</p>
+              <p>{resourceTab === "待整理" ? "暂未归入主题，整理后可移动至学习资料或项目文件夹。" : `按主题集中管理相关 PDF、网页、笔记与附件，共 ${item[1]}。`}</p>
               <div className="progress-track"><span style={{ width: item[2] }} /></div>
               <div className="resource-meta"><span>阅读进度</span><em>{item[2]}</em></div>
             </div>
