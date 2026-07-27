@@ -328,6 +328,42 @@ button { color: inherit; }
   .topic-card.pinned-card:nth-child(even) { transform: none; }
 }
 
+/* V8 — clearer selected date and unmistakable butterfly silhouette */
+.date-pills button.active {
+  color: #6751bd;
+  background: linear-gradient(145deg, #eee9ff, #d9cff8);
+  border-color: rgba(119,94,205,.12);
+  box-shadow: 0 9px 20px rgba(111,87,194,.16), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.companion-face::before {
+  left: 15px; top: 8px; width: 4px; height: 20px;
+  background: linear-gradient(180deg, #6955be, #8f79df);
+}
+.companion-face::after {
+  content: "⌁"; left: 11px; top: -4px; width: 14px;
+  color: #715dca; font-size: 15px; line-height: 1; letter-spacing: 0;
+  transform: rotate(90deg);
+}
+.companion-face i {
+  top: 6px; width: 16px; height: 23px;
+  background: linear-gradient(145deg, #d1c7ff 8%, #9a83e8 62%, #7861ce);
+  box-shadow: inset 2px 2px 3px rgba(255,255,255,.55), 0 4px 8px rgba(102,79,190,.14);
+}
+.companion-face i:first-child {
+  left: 0; right: auto;
+  border-radius: 78% 38% 62% 45%;
+  transform-origin: right center;
+  animation: butterflyWingLeftClear 820ms var(--curve) infinite alternate;
+}
+.companion-face i:last-child {
+  left: auto; right: 0;
+  border-radius: 38% 78% 45% 62%;
+  transform-origin: left center;
+  animation: butterflyWingRightClear 820ms var(--curve) infinite alternate;
+}
+@keyframes butterflyWingLeftClear { from { transform: rotate(-10deg) scaleX(.72); } to { transform: rotate(7deg) scaleX(1); } }
+@keyframes butterflyWingRightClear { from { transform: rotate(10deg) scaleX(.72); } to { transform: rotate(-7deg) scaleX(1); } }
+
 /* V5 — lavender editorial system, pinned knowledge notes and bright folders */
 :root {
   --paper: #f0eff5;
