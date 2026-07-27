@@ -73,6 +73,7 @@ export default function Home() {
                 className={`nav-item ${view === item.id ? "active" : ""}`}
                 onClick={() => setView(item.id)}
                 type="button"
+                data-date={item.id === "today" ? "2026年7月27日 · 星期一" : undefined}
               >
                 <span className="nav-mark">{item.mark}</span>
                 <span className="nav-label">{item.label}</span>
@@ -356,6 +357,40 @@ function TodayView({
           </article>
         </div>
       </section>
+
+      <section className="daily-dashboard-grid">
+        <article className="career-square">
+          <div className="square-head"><div><span className="eyebrow">CAREER TRACK</span><h3>求职进程</h3></div><button type="button" onClick={() => onNavigate("jobs")}>↗</button></div>
+          <div className="career-counts">
+            <span><strong>08</strong>关注岗位</span><span><strong>03</strong>准备中</span><span><strong>02</strong>已投递</span>
+          </div>
+          <div className="career-flow"><i className="done" /><i className="done" /><i className="active" /><i /><i /></div>
+          <div className="recent-job"><small>最近更新</small><strong>百度 · AI 产品运营实习生</strong><span>准备中 · 今天 10:20</span></div>
+        </article>
+
+        <article className="month-square">
+          <div className="square-head"><div><span className="eyebrow">CHECK-IN</span><h3>2026年 7月</h3></div><em>连续记录 9 天</em></div>
+          <div className="mini-calendar-head">{["一","二","三","四","五","六","日"].map((day) => <span key={day}>{day}</span>)}</div>
+          <div className="mini-calendar">
+            {Array.from({ length: 35 }, (_, index) => {
+              const day = index - 2;
+              const valid = day >= 1 && day <= 31;
+              const past = valid && day < 27;
+              return <button type="button" key={index} className={`${!valid ? "empty" : ""} ${past ? "checked" : ""} ${day === 27 ? "today" : ""}`}>{valid ? day : ""}</button>;
+            })}
+          </div>
+        </article>
+
+        <article className="knowledge-deposit">
+          <div className="square-head"><div><span className="eyebrow">TODAY DEPOSIT</span><h3>今日知识沉淀</h3></div><button type="button" onClick={() => onNavigate("knowledge")}>查看知识库 ↗</button></div>
+          <p>今天共搜索 3 个概念，沉淀 2 张知识卡片，补充 1 条个人理解。</p>
+          <div className="deposit-list">
+            <button type="button" onClick={() => onNavigate("knowledge")}><span>01</span><strong>RAG 与微调的使用边界</strong><em>已保存</em></button>
+            <button type="button" onClick={() => onNavigate("knowledge")}><span>02</span><strong>MCP 如何连接工具与数据</strong><em>已理解</em></button>
+            <button type="button" onClick={() => onNavigate("knowledge")}><span>03</span><strong>Embedding 的语义距离</strong><em>待成卡</em></button>
+          </div>
+        </article>
+      </section>
     </div>
   );
 }
@@ -409,13 +444,19 @@ function JobsView({ onNotify, onNavigate }: { onNotify: (message: string) => voi
             <div className="job-cards">
               {company.jobs.map((job) => (
                 <article className="job-card" key={job.title}>
-                  <div className="job-title-row"><div><span>{job.direction} · {job.location}</span><h4>{job.title}</h4></div><em>{job.status}</em></div>
+                  <div className="job-title-row">
+                    <div>
+                      <span>{job.direction} · {job.location}</span>
+                      <h4>{job.title}</h4>
+                      <div className="title-keywords">{job.keywords.map((keyword) => <span key={keyword}>{keyword}</span>)}</div>
+                    </div>
+                    <em>{job.status}</em>
+                  </div>
                   <div className="job-facts">
                     <div><small>秋招类型</small><strong>{job.batch}</strong></div>
                     <div><small>开放日期</small><strong>{job.open}</strong></div>
                     <div className="official-link"><small>招聘官网</small><a href={job.link} target="_blank" rel="noreferrer">↗ {company.company}校园招聘</a></div>
                   </div>
-                  <div className="keyword-line"><small>岗位关键词</small><div>{job.keywords.map((keyword) => <span key={keyword}>{keyword}</span>)}</div></div>
                   <div className="job-actions"><button type="button">记录投递</button><button className="jd-detail-button" type="button" onClick={() => setDetail(`${company.company}-${job.title}`)}>查看上传的 JD →</button></div>
                 </article>
               ))}
@@ -554,6 +595,34 @@ function TasksView({ done, setDone }: { done: number[]; setDone: (value: number[
               <div><strong>{task.title}</strong><small>{task.meta}</small></div>
               <span className={`priority priority-${(index % 3) + 1}`} />
               <button className="edit-task" type="button" onClick={() => { setEditing(task.id); setTaskModal(true); }}>修改</button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="week-overview">
+        <div className="week-overview-head">
+          <div><span className="eyebrow">WEEK OVERVIEW</span><h3>本周任务总览</h3></div>
+          <div className="category-legend">
+            <span><i className="work" />工作</span><span><i className="life" />生活</span><span><i className="skill" />技能</span><span><i className="career" />求职</span>
+          </div>
+        </div>
+        <div className="week-columns">
+          {[
+            ["周一","27",[["整理百度 JD","career"],["RAG 阅读 30 分钟","skill"]]],
+            ["周二","28",[["修改产品原型","work"],["晚间散步","life"]]],
+            ["周三","29",[["项目技术总结","skill"],["查看官网岗位","career"]]],
+            ["周四","30",[["简历版本整理","career"]]],
+            ["周五","31",[["完成周总结","work"],["健身 40 分钟","life"]]],
+            ["周六","01",[["复习知识卡片","skill"]]],
+            ["周日","02",[["下周任务规划","work"]]],
+          ].map(([day,date,items]) => (
+            <article className="week-day" key={`${day}`}>
+              <header><span>{day as string}</span><strong>{date as string}</strong></header>
+              <div>
+                {(items as string[][]).map(([label,type]) => <button type="button" className={`week-item ${type}`} key={label}>{label}</button>)}
+              </div>
+              <button className="add-week-task" type="button" onClick={() => setTaskModal(true)}>＋</button>
             </article>
           ))}
         </div>
