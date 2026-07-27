@@ -36,7 +36,6 @@ export default function Home() {
   const [view, setView] = useState<View>("today");
   const [done, setDone] = useState<number[]>([]);
   const [collectOpen, setCollectOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mascotMessage, setMascotMessage] = useState("");
   const [toast, setToast] = useState("");
@@ -65,7 +64,7 @@ export default function Home() {
       <div className="ambient ambient-a" />
       <div className="ambient ambient-b" />
 
-      <section className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <section className="app-shell">
         <aside className="sidebar">
           <div className="brand">
             <span className="brand-glyph">C</span>
@@ -104,14 +103,6 @@ export default function Home() {
             </div>
             <button type="button" aria-label="打开设置">···</button>
           </div>
-          <button
-            className="sidebar-toggle"
-            type="button"
-            aria-label={sidebarCollapsed ? "展开导航" : "收起导航"}
-            onClick={() => setSidebarCollapsed((value) => !value)}
-          >
-            {sidebarCollapsed ? "›" : "‹"}
-          </button>
         </aside>
 
         <section className="content">
@@ -275,6 +266,7 @@ function TodayView({
 
   return (
     <div className="view-stack">
+      <section className="today-first-row">
       <section className="date-switcher" aria-label="选择日期">
         <div>
           <span className="eyebrow">DAILY ARCHIVE</span>
@@ -305,7 +297,6 @@ function TodayView({
         </div>
       </section>
 
-      <section className="hero-grid">
         <article className="focus-panel task-primary">
           <div className="panel-heading">
             <div><span className="eyebrow">TODAY</span><h3>今日任务</h3></div>
