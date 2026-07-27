@@ -45,6 +45,15 @@ export default function Home() {
     () => navigation.find((item) => item.id === view)?.label ?? "今日",
     [view],
   );
+  const todayLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("zh-CN", {
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+      }).format(new Date()),
+    [],
+  );
 
   function notify(message: string) {
     setToast(message);
@@ -73,7 +82,7 @@ export default function Home() {
                 className={`nav-item ${view === item.id ? "active" : ""}`}
                 onClick={() => setView(item.id)}
                 type="button"
-                data-date={item.id === "today" ? "2026年7月27日 · 星期一" : undefined}
+                data-date={item.id === "today" ? todayLabel : undefined}
               >
                 <span className="nav-mark">{item.mark}</span>
                 <span className="nav-label">{item.label}</span>
