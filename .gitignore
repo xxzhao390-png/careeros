@@ -42,3 +42,7 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/.sites-stage-*/
+/site-build*.tgz
+/.audit-dev-*.log
+/tsconfig.tsbuildinfo
