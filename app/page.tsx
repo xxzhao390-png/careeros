@@ -219,14 +219,6 @@ function TodayView({ items, updateItem, navigate, notify }: WorkspaceActions & {
 
   return (
     <div className="view-stack today-dashboard">
-      <section className="today-intro">
-        <div><span className="eyebrow">DAILY FOCUS · {prettyDate(date)}</span><h2>把今天过得清楚一点，<br/>也温柔一点。</h2><p>{encouragements[new Date(`${date}T00:00:00`).getDay()]}</p></div>
-        <div className="compact-date-control">
-          <button className="calendar-trigger compact" type="button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen((open) => !open)}><span>▦</span> 选择日期</button>
-          {calendarOpen && <DatePicker value={date} choose={(iso) => { setDate(iso); setCalendarOpen(false); }} />}
-        </div>
-      </section>
-
       <section className="today-overview-grid">
         <article className="panel today-tasks">
           <PanelHead eyebrow="TODAY" title="今日任务" action="查看全部" onAction={() => navigate("tasks")} />
@@ -265,7 +257,7 @@ function TodayView({ items, updateItem, navigate, notify }: WorkspaceActions & {
           <span className="eyebrow">ONE DAY · ONE PAGE</span>
           <h2>一天一页，把生活过成<br/>可以慢慢翻阅的日历。</h2>
           <p>每天只看今天的日期、计划与一句鼓励。选择其他日期时，这一页也会一起翻到那一天。</p>
-          <button type="button" onClick={() => setCalendarOpen(true)}>选择另一页日期 <span>→</span></button>
+          <div className="daily-date-control"><button type="button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen((open)=>!open)}>选择另一页日期 <span>→</span></button>{calendarOpen&&<DatePicker value={date} choose={(iso)=>{setDate(iso);setCalendarOpen(false);}} />}</div>
         </div>
       </section>
 
@@ -310,12 +302,19 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
   const [filter, setFilter] = useState<"all" | "open" | "done">("open");
   const [editing, setEditing] = useState<WorkspaceItem | "new" | null>(selectedItem?.kind === "task" ? selectedItem : null);
   const [draftDate, setDraftDate] = useState(todayIso());
+  const [draftCategory, setDraftCategory] = useState("工作");
   const [celebrating, setCelebrating] = useState(false);
   const years = Array.from(new Set(tasks.map((item)=>text(item,"dueDate").slice(0,4)).filter(Boolean))).sort().reverse();
   const [archiveYear, setArchiveYear] = useState(years[0] || String(new Date().getFullYear()));
   const [archiveMonth, setArchiveMonth] = useState("全部");
   const visible = tasks.filter((item) => filter === "all" || (filter === "done" ? bool(item, "done") : !bool(item, "done")));
   const dimensions = ["工作","求职","学习","项目","生活"];
+  const taskSections = [
+    {name:"工作",eyebrow:"WORK",hint:"项目任务也归在这里",tone:"work"},
+    {name:"生活",eyebrow:"LIFE",hint:"照顾生活与自己的节奏",tone:"life"},
+    {name:"求职",eyebrow:"CAREER",hint:"投递、准备与复盘",tone:"career"},
+    {name:"学习",eyebrow:"LEARN",hint:"课程、阅读与知识复习",tone:"learn"},
+  ];
   const weekStart = new Date(`${todayIso()}T00:00:00`);
   weekStart.setDate(weekStart.getDate() - ((weekStart.getDay()+6)%7));
   const weekDates = Array.from({length:7},(_,index)=>{const date=new Date(weekStart);date.setDate(date.getDate()+index);return isoForDate(date);});
@@ -345,21 +344,18 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
     <section className="toolbar">
       <div className="segmented">{(["list","calendar"] as const).map((item) => <button type="button" key={item} className={mode === item ? "active" : ""} onClick={() => setMode(item)}>{item === "list" ? "清单" : "月历"}</button>)}</div>
       {mode === "list" && <><div className="filter-pills">{(["all","open","done"] as const).map((item) => <button type="button" key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item === "all" ? "全部" : item === "open" ? "待完成" : "已完成"}</button>)}</div>
-      <button className="primary-button" type="button" onClick={() => { setDraftDate(todayIso()); setEditing("new"); }}><span>新建任务</span><span className="button-orb">＋</span></button></>}
+      <button className="primary-button" type="button" onClick={() => { setDraftDate(todayIso()); setDraftCategory("工作"); setEditing("new"); }}><span>新建任务</span><span className="button-orb">＋</span></button></>}
     </section>
-    {mode === "list" && <section className="task-goal-strip">
-      <div><span className="eyebrow">MONTH OVERVIEW</span><h2>把计划看清楚，执行会轻松很多。</h2><p>本月共 {tasks.length} 项任务，已完成 {tasks.filter((item)=>bool(item,"done")).length} 项。</p></div>
-      <div className="task-dimension-stats">{dimensions.map((dimension,index)=>{const total=tasks.filter((item)=>text(item,"category")===dimension).length;const done=tasks.filter((item)=>text(item,"category")===dimension&&bool(item,"done")).length;const percent=total?Math.round(done/total*100):0;return <article className={`dimension dimension-${index+1}`} key={dimension}><header><strong>{dimension}</strong><span>{done}/{total}</span></header><div><i style={{width:`${percent}%`}} /></div><small>{percent}% 完成</small></article>;})}</div>
-    </section>}
-    {mode === "list" ? <><section className="panel task-board">
-      <PanelHead eyebrow="TASKS" title={`${visible.length} 项任务`} />
-      <div className="task-table">{visible.length ? visible.map((task) => <article key={task.id} className={bool(task, "done") ? "done" : ""}>
-        <span className={`category-square category-${text(task,"category")}`} aria-hidden="true" />
-        <button className="task-check" type="button" aria-label={bool(task, "done") ? `恢复 ${task.title}` : `完成 ${task.title}`} onClick={() => void toggle(task)}>{bool(task, "done") ? "✓" : ""}</button>
-        <button className="task-copy" type="button" onClick={() => setEditing(task)}><strong>{task.title}</strong><small>{text(task, "dueDate")} · {text(task, "category")} · {text(task, "priority")}</small></button>
-        <span className={`priority-dot priority-${text(task, "priority", "medium")}`} />
-        <button className="quiet-button" type="button" onClick={() => setEditing(task)}>编辑</button>
-      </article>) : <EmptyInline text="这里还没有任务" action="新建任务" onAction={() => { setDraftDate(todayIso()); setEditing("new"); }} />}</div>
+    {mode === "list" ? <><section className="task-quadrants">
+      {taskSections.map((section)=>{const sectionTasks=visible.filter((task)=>section.name==="工作"?["工作","项目"].includes(text(task,"category")):text(task,"category")===section.name);return <article className={`task-section task-section-${section.tone}`} key={section.name}>
+        <header><div><span className="eyebrow">{section.eyebrow}</span><h2>{section.name}</h2><p>{section.hint}</p></div><strong>{sectionTasks.filter((item)=>bool(item,"done")).length}/{sectionTasks.length}</strong></header>
+        <div className="section-task-list">{sectionTasks.map((task)=><article className={bool(task,"done")?"done":""} key={task.id}>
+          <button className="task-check" type="button" aria-label={bool(task,"done")?`恢复 ${task.title}`:`完成 ${task.title}`} onClick={()=>void toggle(task)}>{bool(task,"done")?"✓":""}</button>
+          <button className="section-task-copy" type="button" onClick={()=>setEditing(task)}><strong>{task.title}</strong><small>{text(task,"dueDate")} · {text(task,"priority")}</small></button>
+          <button className="section-task-delete" type="button" aria-label={`删除 ${task.title}`} onClick={()=>void removeItem(task.id).then(()=>notify("任务已删除"))}>×</button>
+        </article>)}</div>
+        <button className="section-add-task" type="button" onClick={()=>{setDraftDate(todayIso());setDraftCategory(section.name);setEditing("new");}}>＋ 添加{section.name}任务</button>
+      </article>})}
     </section>
 
     <section className="panel week-overview">
@@ -379,7 +375,7 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
       <form className="editor-form compact-task-form" onSubmit={saveTask}>
         <Field label="任务名称"><input name="title" autoFocus defaultValue={editing === "new" ? "" : editing.title} placeholder="例如：整理百度 AI 产品运营 JD" /></Field>
         <div className="form-grid"><Field label="日期"><input name="dueDate" type="date" defaultValue={editing === "new" ? draftDate : text(editing, "dueDate")} /></Field><Field label="优先级"><select name="priority" defaultValue={editing === "new" ? "medium" : text(editing, "priority")}><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></Field></div>
-        <Field label="分类"><select name="category" defaultValue={editing === "new" ? "工作" : text(editing, "category")}><option>工作</option><option>求职</option><option>学习</option><option>项目</option><option>生活</option></select></Field>
+        <Field label="分类"><select name="category" defaultValue={editing === "new" ? draftCategory : text(editing, "category")}><option>工作</option><option>求职</option><option>学习</option><option>项目</option><option>生活</option></select></Field>
         <Field label="备注"><textarea name="note" defaultValue={editing === "new" ? "" : text(editing, "note")} placeholder="补充下一步动作或完成标准" /></Field>
         <div className="form-actions">{editing !== "new" && <button className="danger-button" type="button" onClick={() => void removeItem(editing.id).then(() => { setEditing(null); notify("任务已删除"); })}>删除</button>}<button className="primary-button" type="submit"><span>保存任务</span><span className="button-orb">✓</span></button></div>
       </form>
@@ -535,7 +531,7 @@ function KnowledgeView({ items, createItem, updateItem, removeItem, notify, sele
   </div>;
 
   return <div className="view-stack">
-    <section className="ask-panel"><span className="eyebrow">KNOWLEDGE ASSISTANT</span><h2>把陌生概念，变成自己的理解。</h2><div className="ask-box"><input value={question} onChange={(event)=>setQuestion(event.target.value)} onKeyDown={(event)=>{if(event.key==="Enter") explain();}} placeholder="例如：RAG 和微调有什么区别？" aria-label="知识问题" /><button className="primary-button" type="button" onClick={explain}><span>生成解释草稿</span><span className="button-orb">→</span></button></div><div className="suggestions"><span>试试：</span>{["MCP 是什么？","Agent 与 Workflow 的区别？"].map((item)=><button type="button" key={item} onClick={()=>setQuestion(item)}>{item}</button>)}</div></section>
+    <section className="ask-panel knowledge-search-panel"><div className="knowledge-search-copy"><span className="eyebrow">KNOWLEDGE ASSISTANT</span><h2>想理解什么？</h2><p>输入一个概念或问题，从定义、场景和边界开始梳理。</p></div><div className="knowledge-search-side"><div className="ask-box"><span className="ask-symbol" aria-hidden="true">?</span><input value={question} onChange={(event)=>setQuestion(event.target.value)} onKeyDown={(event)=>{if(event.key==="Enter") explain();}} placeholder="输入概念，例如：RAG 和微调有什么区别？" aria-label="知识问题" />{question&&<button className="ask-clear" type="button" aria-label="清空问题" onClick={()=>setQuestion("")}>×</button>}<button className="ask-submit" type="button" onClick={explain} aria-label="生成解释草稿"><span>开始理解</span><i>→</i></button></div><div className="suggestions"><span>可以试试</span>{["MCP 是什么？","Agent 与 Workflow 的区别？"].map((item)=><button type="button" key={item} onClick={()=>setQuestion(item)}>{item}</button>)}</div></div></section>
     {draft && <section className="panel answer-panel"><PanelHead eyebrow="DRAFT" title={draft.title} /><div className="answer-grid"><article><small>一句话理解</small><p>{draft.summary}</p></article><article><small>理解路径</small><p>{draft.explanation}</p></article></div><div className="detail-actions"><button type="button" onClick={()=>setDraft(null)}>放弃草稿</button><button className="primary-button" type="button" onClick={()=>void saveDraft()}><span>保存为知识卡</span><span className="button-orb">＋</span></button></div></section>}
     <section className="knowledge-grid">{cards.map((card,index)=><button type="button" className={`knowledge-card knowledge-${text(card,"tone","lilac")}`} key={card.id} onClick={()=>setSelected(card)}><header><span className="card-number">0{index+1}</span><em>{text(card,"level")}</em></header><h3>{card.title}</h3><p>{text(card,"summary")}</p><div className="knowledge-card-tags">{list(card,"tags").map((tag)=><span key={tag}>{tag}</span>)}</div><small>{text(card,"explanation")}</small><b>阅读解析 <i>→</i></b></button>)}</section>
   </div>;
