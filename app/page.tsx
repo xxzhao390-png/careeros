@@ -29,6 +29,15 @@ const isoForDate = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const todayIso = () => isoForDate(new Date());
 const prettyDate = (iso: string) => new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${iso}T00:00:00`));
+const encouragements = [
+  "把今天过好，已经是一件很棒的事。",
+  "慢一点也没关系，你一直在向前。",
+  "完成一件小事，也是在靠近想去的地方。",
+  "给专注留一点空间，答案会慢慢出现。",
+  "今天的努力，会成为未来的底气。",
+  "允许自己休息，节奏比速度更重要。",
+  "新的一周，从相信自己开始。",
+];
 
 export default function Home() {
   const workspace = useWorkspace();
@@ -96,21 +105,26 @@ export default function Home() {
         <section className="content">
           <header className="topbar">
             <div><span className="eyebrow">PERSONAL WORKSPACE · 2026</span><h1>{title}</h1></div>
-            <div className="global-search">
-              <span aria-hidden="true">⌕</span>
-              <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} aria-label="全局搜索" placeholder="搜索岗位、知识、资料…  Ctrl K" />
-              {query && <button type="button" aria-label="清除搜索" onClick={() => setQuery("")}>×</button>}
-              {query && (
-                <section className="search-results" aria-label="搜索结果">
-                  <header><strong>搜索结果</strong><span>{results.length} 项</span></header>
-                  {results.length ? results.map((item) => (
-                    <button type="button" key={item.id} onClick={() => { setFocusedItem(item); setView(viewForKind[item.kind]); setQuery(""); }}>
-                      <span className={`result-kind kind-${item.kind}`}>{item.kind.slice(0, 1).toUpperCase()}</span>
-                      <span><strong>{item.title}</strong><small>{navigation.find((nav) => nav.id === viewForKind[item.kind])?.label}</small></span><b>→</b>
-                    </button>
-                  )) : <p>没有找到匹配内容，试试公司、技术名词或任务关键词。</p>}
-                </section>
-              )}
+            <div className="top-tools">
+              <div className="site-mascot" role="img" aria-label="CareerOS 小助手">
+                <span className="mascot-antenna" /><span className="mascot-eye eye-left" /><span className="mascot-eye eye-right" /><span className="mascot-smile" />
+              </div>
+              <div className="global-search">
+                <span aria-hidden="true">⌕</span>
+                <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} aria-label="全局搜索" placeholder="搜索岗位、知识、资料…  Ctrl K" />
+                {query && <button type="button" aria-label="清除搜索" onClick={() => setQuery("")}>×</button>}
+                {query && (
+                  <section className="search-results" aria-label="搜索结果">
+                    <header><strong>搜索结果</strong><span>{results.length} 项</span></header>
+                    {results.length ? results.map((item) => (
+                      <button type="button" key={item.id} onClick={() => { setFocusedItem(item); setView(viewForKind[item.kind]); setQuery(""); }}>
+                        <span className={`result-kind kind-${item.kind}`}>{item.kind.slice(0, 1).toUpperCase()}</span>
+                        <span><strong>{item.title}</strong><small>{navigation.find((nav) => nav.id === viewForKind[item.kind])?.label}</small></span><b>→</b>
+                      </button>
+                    )) : <p>没有找到匹配内容，试试公司、技术名词或任务关键词。</p>}
+                  </section>
+                )}
+              </div>
             </div>
           </header>
 
@@ -118,7 +132,7 @@ export default function Home() {
             <>
               {view === "today" && <TodayView key={`today-${focusedItem?.id ?? ""}`} {...common} navigate={navigate} />}
               {view === "tasks" && <TasksView key={`tasks-${focusedItem?.id ?? ""}`} {...common} />}
-              {view === "jobs" && <JobsView key={`jobs-${focusedItem?.id ?? ""}`} {...common} />}
+              {view === "jobs" && <JobsView key={`jobs-${focusedItem?.id ?? ""}`} {...common} navigate={navigate} />}
               {view === "knowledge" && <KnowledgeView key={`knowledge-${focusedItem?.id ?? ""}`} {...common} />}
               {view === "resources" && <ResourcesView key={`resources-${focusedItem?.id ?? ""}`} {...common} />}
               {view === "thoughts" && <ThoughtsView key={`thoughts-${focusedItem?.id ?? ""}`} {...common} />}
@@ -145,10 +159,17 @@ function ErrorState({ message, retry }: { message: string; retry: () => void }) 
 function TodayView({ items, updateItem, navigate, notify }: WorkspaceActions & { navigate: (view: View) => void; notify: (message: string) => void }) {
   const [date, setDate] = useState(todayIso());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const allTasks = items.filter((item) => item.kind === "task");
   const tasks = items.filter((item) => item.kind === "task" && text(item, "dueDate") === date);
-  const knowledge = items.filter((item) => item.kind === "knowledge").slice(0, 3);
+  const knowledge = items.filter((item) => item.kind === "knowledge");
   const jobs = items.filter((item) => item.kind === "job");
   const doneCount = tasks.filter((item) => bool(item, "done")).length;
+  const totalDone = allTasks.filter((item) => bool(item, "done")).length;
+  const taskPercent = allTasks.length ? Math.round(totalDone / allTasks.length * 100) : 0;
+  const knowledgePercent = knowledge.length ? Math.round(knowledge.filter((item) => ["能解释","已理解","已收藏"].includes(text(item,"level"))).length / knowledge.length * 100) : 0;
+  const jobPercent = jobs.length ? Math.round(jobs.filter((item) => ["准备中","已投递","面试中","已结束"].includes(text(item,"status"))).length / jobs.length * 100) : 0;
+  const review = knowledge[reviewIndex % Math.max(knowledge.length, 1)];
   const week = Array.from({ length: 7 }, (_, index) => {
     const day = new Date(`${date}T00:00:00`);
     const offset = (day.getDay() + 6) % 7;
@@ -162,17 +183,16 @@ function TodayView({ items, updateItem, navigate, notify }: WorkspaceActions & {
   }
 
   return (
-    <div className="view-stack">
-      <section className="date-switcher">
-        <div><span className="eyebrow">DAILY FOCUS</span><strong>{prettyDate(date)}</strong></div>
-        <div className="week-pills">
-          {week.map((iso) => <button type="button" key={iso} className={date === iso ? "active" : ""} aria-pressed={date === iso} onClick={() => setDate(iso)}><span>{prettyDate(iso).slice(-2)}</span><strong>{Number(iso.slice(-2))}</strong></button>)}
-          <button className="calendar-trigger" type="button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen((open) => !open)}>选择日期</button>
+    <div className="view-stack today-dashboard">
+      <section className="today-intro">
+        <div><span className="eyebrow">DAILY FOCUS · {prettyDate(date)}</span><h2>把今天过得清楚一点，<br/>也温柔一点。</h2><p>{encouragements[new Date(`${date}T00:00:00`).getDay()]}</p></div>
+        <div className="compact-date-control">
+          <button className="calendar-trigger compact" type="button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen((open) => !open)}><span>▦</span> 选择日期</button>
           {calendarOpen && <DatePicker value={date} choose={(iso) => { setDate(iso); setCalendarOpen(false); }} />}
         </div>
       </section>
 
-      <section className="today-grid">
+      <section className="today-overview-grid">
         <article className="panel today-tasks">
           <PanelHead eyebrow="TODAY" title="今日任务" action="查看全部" onAction={() => navigate("tasks")} />
           <div className="task-list">
@@ -180,16 +200,46 @@ function TodayView({ items, updateItem, navigate, notify }: WorkspaceActions & {
           </div>
         </article>
 
-        <article className="panel progress-card">
-          <PanelHead eyebrow="PROGRESS" title="今日推进" />
-          <div className="progress-orbit" style={{ "--progress": `${tasks.length ? Math.round(doneCount / tasks.length * 100) : 0}%` } as CSSProperties}><span><strong>{doneCount}/{tasks.length}</strong><small>任务完成</small></span></div>
-          <div className="mini-stats"><button type="button" onClick={() => navigate("jobs")}><span>求职</span><strong>{jobs.length}</strong></button><button type="button" onClick={() => navigate("knowledge")}><span>知识</span><strong>{knowledge.length}</strong></button></div>
+        <article className="panel progress-card restored-progress">
+          <PanelHead eyebrow="TODAY PROGRESS" title="成长推进" />
+          <div className="concentric-progress">
+            <div className="progress-legend">
+              <button type="button" onClick={() => navigate("knowledge")}><i className="purple" /><span>知识<strong>{knowledgePercent}%</strong></span></button>
+              <button type="button" onClick={() => navigate("tasks")}><i className="blue" /><span>任务<strong>{taskPercent}%</strong></span></button>
+              <button type="button" onClick={() => navigate("jobs")}><i className="orange" /><span>求职<strong>{jobPercent}%</strong></span></button>
+            </div>
+            <div className="multi-ring" aria-label={`知识 ${knowledgePercent}%，任务 ${taskPercent}%，求职 ${jobPercent}%`}>
+              <span className="outer-ring" style={{"--ring-progress":`${knowledgePercent}%`} as CSSProperties} />
+              <span className="middle-ring" style={{"--ring-progress":`${taskPercent}%`} as CSSProperties} />
+              <span className="inner-ring" style={{"--ring-progress":`${jobPercent}%`} as CSSProperties} />
+              <strong>{doneCount}/{tasks.length}</strong><small>今日完成</small>
+            </div>
+          </div>
         </article>
+      </section>
 
-        <article className="panel knowledge-review">
-          <PanelHead eyebrow="DAILY REVIEW" title="今日复习" action="知识库" onAction={() => navigate("knowledge")} />
-          {knowledge.map((card, index) => <button type="button" key={card.id} onClick={() => navigate("knowledge")}><span>0{index + 1}</span><div><strong>{card.title}</strong><small>{text(card, "summary")}</small></div><b>→</b></button>)}
-        </article>
+      <section className="panel encouragement-calendar">
+        <PanelHead eyebrow="A WEEK OF LIGHT" title="这一周，每天给自己一句话" />
+        <div>{week.map((iso,index)=><button type="button" key={iso} className={date===iso?"active":""} onClick={()=>setDate(iso)}><span>{prettyDate(iso)}</span><strong>{encouragements[index]}</strong><i>{allTasks.filter((item)=>text(item,"dueDate")===iso).length ? `${allTasks.filter((item)=>text(item,"dueDate")===iso).length} 项计划` : "给今天留一点可能"}</i></button>)}</div>
+      </section>
+
+      {review && <section className="review-section restored-review">
+        <div className="review-copy"><span className="eyebrow">DAILY REVIEW</span><h2>每日复习知识</h2><p>不是只看一句定义，而是重新理解它解决的问题、适用场景与边界。</p><div className="review-progress"><strong>0{reviewIndex+1}</strong><span>/ 0{knowledge.length}</span></div></div>
+        <div className="review-deck">
+          <div className="review-card ghost ghost-two" /><div className="review-card ghost ghost-one" />
+          <article className={`review-card active knowledge-${text(review,"tone","lilac")}`}>
+            <header><span className="review-term">{review.title}</span><em>{text(review,"level")}</em></header>
+            <h3>{text(review,"summary")}</h3>
+            <p>{text(review,"explanation")}</p>
+            <dl><div><dt>先问自己</dt><dd>它解决什么问题？什么情况下不适合使用？</dd></div><div><dt>关联标签</dt><dd>{list(review,"tags").join(" · ")}</dd></div></dl>
+            <div className="review-card-actions"><button type="button" onClick={()=>setReviewIndex((reviewIndex-1+knowledge.length)%knowledge.length)}>← 上一张</button><button type="button" onClick={()=>setReviewIndex((reviewIndex+1)%knowledge.length)}>理解了，下一张 →</button></div>
+          </article>
+        </div>
+      </section>}
+
+      <section className="today-insight-grid">
+        <article className="panel warm-note"><span className="eyebrow">TODAY NOTE</span><h3>{tasks.length ? `今天有 ${tasks.length} 件事值得认真完成` : "今天暂时没有安排"}</h3><p>{tasks.length ? `已经完成 ${doneCount} 件。不要急着填满时间，先把最重要的一件做好。` : "空白不是浪费，它也可以用来恢复能量、整理方向。"}</p></article>
+        <article className="panel next-step"><span className="eyebrow">NEXT STEP</span><h3>{jobs.filter((item)=>text(item,"status")==="准备中").length} 个岗位正在准备</h3><p>把岗位关键词和自己的项目案例连起来，会比重复收藏更接近机会。</p><button type="button" onClick={()=>navigate("jobs")}>查看求职进度 →</button></article>
       </section>
     </div>
   );
@@ -214,7 +264,17 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
   const [filter, setFilter] = useState<"all" | "open" | "done">("open");
   const [editing, setEditing] = useState<WorkspaceItem | "new" | null>(selectedItem?.kind === "task" ? selectedItem : null);
   const [draftDate, setDraftDate] = useState(todayIso());
+  const [celebrating, setCelebrating] = useState(false);
+  const years = Array.from(new Set(tasks.map((item)=>text(item,"dueDate").slice(0,4)).filter(Boolean))).sort().reverse();
+  const [archiveYear, setArchiveYear] = useState(years[0] || String(new Date().getFullYear()));
+  const [archiveMonth, setArchiveMonth] = useState("全部");
   const visible = tasks.filter((item) => filter === "all" || (filter === "done" ? bool(item, "done") : !bool(item, "done")));
+  const dimensions = ["工作","求职","学习","项目","生活"];
+  const weekStart = new Date(`${todayIso()}T00:00:00`);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay()+6)%7));
+  const weekDates = Array.from({length:7},(_,index)=>{const date=new Date(weekStart);date.setDate(date.getDate()+index);return isoForDate(date);});
+  const archived = tasks.filter((item)=>bool(item,"done") && text(item,"dueDate").startsWith(`${archiveYear}-${archiveMonth==="全部"?"":archiveMonth}`));
+  const archiveGroups = archived.reduce<Record<string,WorkspaceItem[]>>((groups,item)=>{const date=text(item,"dueDate");(groups[date]??=[]).push(item);return groups;},{});
 
   async function saveTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -229,6 +289,10 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
 
   async function toggle(task: WorkspaceItem) {
     await updateItem(task.id, { data: { done: !bool(task, "done") } });
+    if (!bool(task,"done")) {
+      setCelebrating(true);
+      window.setTimeout(()=>setCelebrating(false),1800);
+    }
   }
 
   return <div className="view-stack">
@@ -237,15 +301,33 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
       <div className="filter-pills">{(["all","open","done"] as const).map((item) => <button type="button" key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item === "all" ? "全部" : item === "open" ? "待完成" : "已完成"}</button>)}</div>
       <button className="primary-button" type="button" onClick={() => { setDraftDate(todayIso()); setEditing("new"); }}><span>新建任务</span><span className="button-orb">＋</span></button>
     </section>
+    <section className="task-goal-strip">
+      <div><span className="eyebrow">MONTH OVERVIEW</span><h2>把计划看清楚，执行会轻松很多。</h2><p>本月共 {tasks.length} 项任务，已完成 {tasks.filter((item)=>bool(item,"done")).length} 项。</p></div>
+      <div className="task-dimension-stats">{dimensions.map((dimension,index)=>{const total=tasks.filter((item)=>text(item,"category")===dimension).length;const done=tasks.filter((item)=>text(item,"category")===dimension&&bool(item,"done")).length;const percent=total?Math.round(done/total*100):0;return <article className={`dimension dimension-${index+1}`} key={dimension}><header><strong>{dimension}</strong><span>{done}/{total}</span></header><div><i style={{width:`${percent}%`}} /></div><small>{percent}% 完成</small></article>;})}</div>
+    </section>
     {mode === "list" ? <section className="panel task-board">
       <PanelHead eyebrow="TASKS" title={`${visible.length} 项任务`} />
       <div className="task-table">{visible.length ? visible.map((task) => <article key={task.id} className={bool(task, "done") ? "done" : ""}>
+        <span className={`category-square category-${text(task,"category")}`} aria-hidden="true" />
         <button className="task-check" type="button" aria-label={bool(task, "done") ? `恢复 ${task.title}` : `完成 ${task.title}`} onClick={() => void toggle(task)}>{bool(task, "done") ? "✓" : ""}</button>
         <button className="task-copy" type="button" onClick={() => setEditing(task)}><strong>{task.title}</strong><small>{text(task, "dueDate")} · {text(task, "category")} · {text(task, "priority")}</small></button>
         <span className={`priority-dot priority-${text(task, "priority", "medium")}`} />
         <button className="quiet-button" type="button" onClick={() => setEditing(task)}>编辑</button>
       </article>) : <EmptyInline text="这里还没有任务" action="新建任务" onAction={() => { setDraftDate(todayIso()); setEditing("new"); }} />}</div>
     </section> : <MonthCalendar tasks={tasks} edit={setEditing} createOnDate={(iso) => { setDraftDate(iso); setEditing("new"); }} />}
+
+    <section className="panel week-overview">
+      <header className="week-overview-head"><div><span className="eyebrow">WEEK OVERVIEW</span><h2>本周任务总览</h2><p>按不同维度查看这一周的投入，避免所有事情挤在同一天。</p></div><div className="category-legend">{dimensions.map((item,index)=><span key={item}><i className={`dimension-${index+1}`} />{item}</span>)}</div></header>
+      <div className="week-columns">{weekDates.map((iso)=><article className="week-day" key={iso}><header><span>{prettyDate(iso).slice(-2)}</span><strong>{Number(iso.slice(-2))}</strong></header><div>{tasks.filter((item)=>text(item,"dueDate")===iso).map((item)=><button className={`week-item category-bg-${text(item,"category")}`} type="button" key={item.id} onClick={()=>setEditing(item)}><i>{bool(item,"done")?"✓":"○"}</i>{item.title}</button>)}</div><button className="add-week-task" type="button" onClick={()=>{setDraftDate(iso);setEditing("new");}}>＋ 添加</button></article>)}</div>
+    </section>
+
+    <section className="panel task-archive">
+      <header className="archive-heading"><div><span className="eyebrow">DAILY ARCHIVE</span><h2>每日完成归档</h2><p>不用逐月翻找，直接选择年份和月份回看完成记录。</p></div><div className="archive-selectors"><select aria-label="归档年份" value={archiveYear} onChange={(event)=>setArchiveYear(event.target.value)}>{years.map((year)=><option key={year}>{year}</option>)}</select><select aria-label="归档月份" value={archiveMonth} onChange={(event)=>setArchiveMonth(event.target.value)}><option>全部</option>{Array.from({length:12},(_,index)=>String(index+1).padStart(2,"0")).map((month)=><option key={month} value={month}>{Number(month)}月</option>)}</select></div></header>
+      <div className="archive-folders">{Object.entries(archiveGroups).sort(([a],[b])=>b.localeCompare(a)).map(([date,dateTasks],index)=><article className={`archive-folder archive-${index%4+1}`} key={date}><span className="folder-tab" /><strong>{prettyDate(date)}</strong><small>{dateTasks.length} 项已完成</small><div>{dateTasks.map((item)=><button type="button" key={item.id} onClick={()=>setEditing(item)}>✓ {item.title}</button>)}</div></article>)}</div>
+      {!archived.length&&<div className="archive-empty"><span>○</span><div><strong>这个时间段还没有已完成任务</strong><p>完成任务后，它会自动进入这里，成为可以回看的成长记录。</p></div></div>}
+    </section>
+
+    {celebrating&&<div className="celebration" role="status"><div className="confetti">{Array.from({length:18},(_,index)=><i key={index} style={{"--i":index} as CSSProperties} />)}</div><div className="celebration-core"><span>✓</span><strong>完成一件，离目标更近一点</strong></div></div>}
     {editing && <Drawer title={editing === "new" ? "新建任务" : "编辑任务"} close={() => setEditing(null)}>
       <form className="editor-form" onSubmit={saveTask}>
         <Field label="任务名称"><input name="title" autoFocus defaultValue={editing === "new" ? "" : editing.title} placeholder="例如：整理百度 AI 产品运营 JD" /></Field>
@@ -260,17 +342,19 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
 
 function MonthCalendar({ tasks, edit, createOnDate }: { tasks: WorkspaceItem[]; edit: (task: WorkspaceItem) => void; createOnDate: (iso: string) => void }) {
   const [month, setMonth] = useState(new Date("2026-07-01T00:00:00"));
+  const taskYears = tasks.map((item)=>Number(text(item,"dueDate").slice(0,4))).filter(Boolean);
+  const calendarYears = Array.from(new Set([month.getFullYear()-2,month.getFullYear()-1,month.getFullYear(),month.getFullYear()+1,...taskYears])).sort();
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const offset = (first.getDay() + 6) % 7;
   const count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   return <section className="panel month-view">
-    <header className="month-head"><button type="button" aria-label="上个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>←</button><div><span className="eyebrow">MONTH VIEW</span><h2>{month.getFullYear()} 年 {month.getMonth() + 1} 月</h2></div><button type="button" aria-label="下个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>→</button></header>
+    <header className="month-head"><button type="button" aria-label="上个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>←</button><div><span className="eyebrow">MONTH VIEW</span><span className="month-jump"><select aria-label="选择年份" value={month.getFullYear()} onChange={(event)=>setMonth(new Date(Number(event.target.value),month.getMonth(),1))}>{calendarYears.map((year)=><option key={year} value={year}>{year} 年</option>)}</select><select aria-label="选择月份" value={month.getMonth()} onChange={(event)=>setMonth(new Date(month.getFullYear(),Number(event.target.value),1))}>{Array.from({length:12},(_,index)=><option key={index} value={index}>{index+1} 月</option>)}</select></span></div><button type="button" aria-label="下个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>→</button></header>
     <div className="month-week">{["周一","周二","周三","周四","周五","周六","周日"].map((day) => <span key={day}>{day}</span>)}</div>
     <div className="month-grid">{Array.from({ length: offset + count }, (_, index) => index < offset ? <article className="empty" key={`e-${index}`} /> : (() => { const day = index - offset + 1; const iso = `${month.getFullYear()}-${String(month.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`; const dayTasks = tasks.filter((task) => text(task, "dueDate") === iso); return <article key={iso} className={iso === todayIso() ? "today" : ""}><header><strong>{day}</strong>{iso === todayIso() && <span>今天</span>}</header><div>{dayTasks.slice(0,3).map((task) => <button type="button" className={`calendar-task cat-${text(task,"category")}`} key={task.id} onClick={() => edit(task)}>{task.title}</button>)}</div><button className="day-add" type="button" aria-label={`在 ${iso} 新建任务`} onClick={() => createOnDate(iso)}>＋</button></article>; })())}</div>
   </section>;
 }
 
-function JobsView({ items, createItem, updateItem, removeItem, notify, selectedItem }: WorkspaceActions & { notify: (message: string) => void; selectedItem?: WorkspaceItem }) {
+function JobsView({ items, createItem, updateItem, removeItem, notify, selectedItem, navigate }: WorkspaceActions & { notify: (message: string) => void; selectedItem?: WorkspaceItem; navigate: (view: View) => void }) {
   const jobs = items.filter((item) => item.kind === "job");
   const [category, setCategory] = useState("全部");
   const [selected, setSelected] = useState<WorkspaceItem | null>(selectedItem?.kind === "job" ? selectedItem : null);
@@ -278,6 +362,8 @@ function JobsView({ items, createItem, updateItem, removeItem, notify, selectedI
   const categories = ["全部", "国央企", "大厂", "高校", "外企", "其他"];
   const visible = category === "全部" ? jobs : jobs.filter((job) => text(job, "category") === category);
   const stages = ["未分析", "关注中", "准备中", "已投递", "面试中", "已结束"];
+  const companyGroups = Array.from(visible.reduce<Map<string,WorkspaceItem[]>>((groups,job)=>{const company=text(job,"company","待整理公司");groups.set(company,[...(groups.get(company)||[]),job]);return groups;},new Map()));
+  const techStack = Array.from(new Set(visible.flatMap((job)=>list(job,"keywords"))));
 
   async function saveJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -286,7 +372,7 @@ function JobsView({ items, createItem, updateItem, removeItem, notify, selectedI
     const company = String(form.get("company") || "").trim();
     if (!title || !company) return notify("请填写公司和岗位名称");
     const keywords = String(form.get("keywords") || "").split(/[,，]/).map((item) => item.trim()).filter(Boolean);
-    const data = { company, location: String(form.get("location")), batch: String(form.get("batch")), openDate: String(form.get("openDate")), status: editing && editing !== "new" ? text(editing, "status") : "未分析", category: String(form.get("category")), keywords, link: String(form.get("link")), description: String(form.get("description")) };
+    const data = { company, location: String(form.get("location")), batch: String(form.get("batch")), openDate: String(form.get("openDate")), deadline: String(form.get("deadline")), status: editing && editing !== "new" ? text(editing, "status") : "未分析", category: String(form.get("category")), keywords, link: String(form.get("link")), description: String(form.get("description")) };
     const wasNew = editing === "new";
     let saved: WorkspaceItem;
     if (wasNew) saved = await createItem({ kind: "job", title, data });
@@ -295,29 +381,27 @@ function JobsView({ items, createItem, updateItem, removeItem, notify, selectedI
     setEditing(null); setSelected(saved); notify(wasNew ? "JD 已添加" : "岗位已更新");
   }
 
-  async function advance(job: WorkspaceItem) {
-    const current = stages.indexOf(text(job, "status"));
-    const next = stages[Math.min(current + 1, stages.length - 1)];
-    const updated = await updateItem(job.id, { data: { status: next } });
-    setSelected(updated); notify(`状态已更新为「${next}」`);
-  }
-
   if (selected) return <div className="view-stack detail-page">
     <button className="inline-back" type="button" onClick={() => setSelected(null)}>← 返回岗位列表</button>
-    <section className="detail-hero job-detail-hero"><div><span className="eyebrow">{text(selected,"category")} · {text(selected,"location")}</span><h2>{selected.title}</h2><p>{text(selected,"company")} · {text(selected,"batch")} · 开放于 {text(selected,"openDate")}</p></div><span className="status-pill">{text(selected,"status")}</span></section>
-    <section className="detail-grid"><article><small>岗位描述</small><p>{text(selected,"description","暂未填写岗位描述。")}</p></article><article><small>关键词</small><div className="tag-row">{list(selected,"keywords").map((tag) => <span key={tag}>{tag}</span>)}</div></article><article className="wide"><small>下一步</small><h3>把关注变成行动</h3><p>记录投递进度、补齐关键词对应案例，并在面试前关联知识卡和项目材料。</p></article></section>
-    <div className="detail-actions"><button type="button" onClick={() => setEditing(selected)}>编辑 JD</button>{text(selected,"link") && <a href={text(selected,"link")} target="_blank" rel="noreferrer">招聘官网 ↗</a>}<button className="primary-button" type="button" onClick={() => void advance(selected)}><span>推进到下一阶段</span><span className="button-orb">→</span></button></div>
+    <article className="job-document">
+      <header><span className="eyebrow">JOB DESCRIPTION</span><h2>{selected.title}</h2><p>{text(selected,"company")} · {text(selected,"location")} · {text(selected,"batch")}</p><div className="job-document-meta"><span>开放：{text(selected,"openDate","待确认")}</span><span>截止：{text(selected,"deadline","待确认")}</span><span>进度：{text(selected,"status")}</span></div></header>
+      <div className="tag-row">{list(selected,"keywords").map((tag)=><span key={tag}>{tag}</span>)}</div>
+      <section><h3>岗位信息</h3><p>{text(selected,"description","暂未填写岗位描述。建议补充岗位职责、任职要求和加分项，方便后续针对性准备。")}</p></section>
+      <section><h3>准备建议</h3><p>先把岗位关键词对应到自己的项目、课程或实践经历；再为每个关键词准备一个可以量化结果的案例，最后根据截止日期安排投递和复盘。</p></section>
+    </article>
+    <div className="detail-actions"><button type="button" onClick={() => setEditing(selected)}>编辑 JD</button>{text(selected,"link") && <a href={text(selected,"link")} target="_blank" rel="noreferrer">打开招聘官网 ↗</a>}</div>
     {editing && editing !== "new" && <JobEditor item={editing} save={saveJob} close={() => setEditing(null)} remove={() => void removeItem(editing.id).then(() => { setEditing(null); setSelected(null); notify("岗位已删除"); })} />}
   </div>;
 
   return <div className="view-stack">
     <section className="toolbar"><div className="filter-pills">{categories.map((item) => <button type="button" key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div><button className="primary-button" type="button" onClick={() => setEditing("new")}><span>添加 JD</span><span className="button-orb">＋</span></button></section>
-    <section className="job-list">{visible.map((job) => <article className="job-card" key={job.id}>
-      <button className="job-main" type="button" onClick={() => setSelected(job)}><span className="company-logo">{text(job,"company").slice(0,1)}</span><span><small>{text(job,"category")} · {text(job,"location")}</small><strong>{job.title}</strong><em>{text(job,"company")}</em></span></button>
+    <section className="company-groups">{companyGroups.map(([company,companyJobs])=><article className="company-group" key={company}><header className="company-head"><span className="company-logo">{company.slice(0,1)}</span><div><small>{text(companyJobs[0],"category")} · {text(companyJobs[0],"location")}</small><h2>{company}</h2><p>{companyJobs.length} 个关注岗位</p></div></header><div className="job-cards">{companyJobs.map((job)=><article className="job-card grouped" key={job.id}>
+      <button className="job-main" type="button" onClick={() => setSelected(job)}><span><small>{text(job,"batch")} · {text(job,"location")}</small><strong>{job.title}</strong></span></button>
       <div className="tag-row">{list(job,"keywords").map((tag) => <span key={tag}>{tag}</span>)}</div>
-      <div className="job-meta"><span><small>招聘批次</small><strong>{text(job,"batch")}</strong></span><span><small>开放日期</small><strong>{text(job,"openDate")}</strong></span></div>
-      <button className="status-button" type="button" onClick={() => void advance(job)}>{text(job,"status")} <b>→</b></button>
-    </article>)}</section>
+      <div className="job-facts"><span><small>开放日期</small><strong>{text(job,"openDate","待确认")}</strong></span><span><small>截止日期</small><strong>{text(job,"deadline","待确认")}</strong></span>{text(job,"link")?<a href={text(job,"link")} target="_blank" rel="noreferrer">招聘官网 ↗</a>:<span><small>招聘官网</small><strong>待补充</strong></span>}</div>
+      <label className="job-stage"><span>当前进度</span><select value={text(job,"status")} onChange={(event)=>void updateItem(job.id,{data:{status:event.target.value}}).then(()=>notify(`状态已更新为「${event.target.value}」`))}>{stages.map((stage)=><option key={stage}>{stage}</option>)}</select></label>
+    </article>)}</div></article>)}</section>
+    <section className="tech-stack-panel"><div><span className="eyebrow">TECH STACK FROM JD</span><h2>从岗位要求中提取的关键词</h2><p>用这些关键词检查知识储备，也可以直接进入知识库继续整理。</p></div><div className="tech-links">{techStack.map((keyword)=><button type="button" key={keyword} onClick={()=>navigate("knowledge")}>{keyword} <span>→</span></button>)}</div></section>
     {!visible.length && <div className="empty-state"><strong>这个分类还没有岗位</strong><p>添加 JD 后会自动出现在对应分类中。</p><button type="button" onClick={() => setEditing("new")}>添加第一个岗位</button></div>}
     {editing && <JobEditor item={editing} save={saveJob} close={() => setEditing(null)} />}
   </div>;
@@ -328,6 +412,7 @@ function JobEditor({ item, save, close, remove }: { item: WorkspaceItem | "new";
     <div className="form-grid"><Field label="公司"><input name="company" autoFocus defaultValue={item === "new" ? "" : text(item,"company")} placeholder="公司名称" /></Field><Field label="岗位名称"><input name="title" defaultValue={item === "new" ? "" : item.title} placeholder="岗位名称" /></Field></div>
     <div className="form-grid"><Field label="城市"><input name="location" defaultValue={item === "new" ? "" : text(item,"location")} placeholder="北京" /></Field><Field label="分类"><select name="category" defaultValue={item === "new" ? "大厂" : text(item,"category")}><option>国央企</option><option>大厂</option><option>高校</option><option>外企</option><option>其他</option></select></Field></div>
     <div className="form-grid"><Field label="招聘批次"><input name="batch" defaultValue={item === "new" ? "秋招正式批" : text(item,"batch")} /></Field><Field label="开放日期"><input name="openDate" type="date" defaultValue={item === "new" ? todayIso() : text(item,"openDate")} /></Field></div>
+    <Field label="截止日期"><input name="deadline" type="date" defaultValue={item === "new" ? "" : text(item,"deadline")} /></Field>
     <Field label="关键词"><input name="keywords" defaultValue={item === "new" ? "" : list(item,"keywords").join("，")} placeholder="大模型应用，用户运营，数据分析" /></Field>
     <Field label="招聘官网"><input name="link" type="url" defaultValue={item === "new" ? "" : text(item,"link")} placeholder="https://" /></Field>
     <Field label="JD 描述"><textarea name="description" defaultValue={item === "new" ? "" : text(item,"description")} placeholder="粘贴岗位职责和任职要求" /></Field>
@@ -365,8 +450,13 @@ function KnowledgeView({ items, createItem, updateItem, removeItem, notify, sele
 
   if (selected) return <div className="view-stack detail-page">
     <button className="inline-back" type="button" onClick={() => setSelected(null)}>← 返回知识库</button>
-    <section className={`detail-hero knowledge-${text(selected,"tone","lilac")}`}><div><span className="eyebrow">KNOWLEDGE CARD</span><h2>{selected.title}</h2><p>{text(selected,"summary")}</p></div><span className="status-pill">{text(selected,"level")}</span></section>
-    <section className="detail-grid"><article><small>核心解释</small><p>{text(selected,"explanation")}</p></article><article><small>标签</small><div className="tag-row">{list(selected,"tags").map((tag) => <span key={tag}>{tag}</span>)}</div></article><article className="wide"><small>复习提示</small><h3>先用自己的话回答，再核对卡片</h3><p>它解决什么问题？输入和输出是什么？在什么情况下不应该使用？</p></article></section>
+    <article className="knowledge-document">
+      <header><span className="eyebrow">KNOWLEDGE NOTE</span><h2>{selected.title}</h2><p>{text(selected,"summary")}</p><div><span>{text(selected,"level")}</span>{list(selected,"tags").map((tag)=><span key={tag}>#{tag}</span>)}</div></header>
+      <section><h3>概念解析</h3><p>{text(selected,"explanation") || `${selected.title} 是一个需要继续补充的知识概念。建议从定义、输入输出和应用场景三个方面建立完整理解。`}</p><p>{selected.title} 的价值不只在于记住定义，而是能够判断它解决什么问题、需要哪些前提，以及如何与真实产品或工作流程连接。</p></section>
+      <section><h3>什么时候使用</h3><ul><li>当问题与它的核心能力和输入条件相匹配时。</li><li>当它能比现有方案更清晰地降低成本、提高质量或改善体验时。</li><li>当团队能够验证输出，并为错误结果准备兜底方式时。</li></ul></section>
+      <section><h3>理解边界</h3><blockquote>不要只问“它能做什么”，还要问“它依赖什么、不能保证什么、失败时会发生什么”。</blockquote><p>学习一个技术概念时，把适用条件和限制一起记录，才能把知识真正用于产品判断。</p></section>
+      <section><h3>复习问题</h3><ol><li>请用自己的话解释 {selected.title}。</li><li>它的输入、处理过程和输出分别是什么？</li><li>在什么情况下不应该使用它？</li><li>你能想到哪个真实产品场景？</li></ol></section>
+    </article>
     <div className="detail-actions"><button type="button" onClick={() => setEditing(selected)}>编辑卡片</button><button className="primary-button" type="button" onClick={() => void updateItem(selected.id,{data:{level:"已理解"}}).then((item)=>{setSelected(item);notify("已更新为已理解");})}><span>标记为已理解</span><span className="button-orb">✓</span></button></div>
     {editing && <Drawer title="编辑知识卡" close={() => setEditing(null)}><form className="editor-form" onSubmit={saveEdit}><Field label="标题"><input name="title" defaultValue={editing.title} /></Field><Field label="掌握程度"><select name="level" defaultValue={text(editing,"level")}><option>刚遇到</option><option>学习中</option><option>能解释</option><option>已理解</option></select></Field><Field label="摘要"><textarea name="summary" defaultValue={text(editing,"summary")} /></Field><Field label="我的解释"><textarea name="explanation" defaultValue={text(editing,"explanation")} /></Field><Field label="标签"><input name="tags" defaultValue={list(editing,"tags").join("，")} /></Field><div className="form-actions"><button className="danger-button" type="button" onClick={() => void removeItem(editing.id).then(()=>{setEditing(null);setSelected(null);notify("知识卡已删除");})}>删除</button><button className="primary-button" type="submit"><span>保存修改</span><span className="button-orb">✓</span></button></div></form></Drawer>}
   </div>;
@@ -374,7 +464,7 @@ function KnowledgeView({ items, createItem, updateItem, removeItem, notify, sele
   return <div className="view-stack">
     <section className="ask-panel"><span className="eyebrow">KNOWLEDGE ASSISTANT</span><h2>把陌生概念，变成自己的理解。</h2><div className="ask-box"><input value={question} onChange={(event)=>setQuestion(event.target.value)} onKeyDown={(event)=>{if(event.key==="Enter") explain();}} placeholder="例如：RAG 和微调有什么区别？" aria-label="知识问题" /><button className="primary-button" type="button" onClick={explain}><span>生成解释草稿</span><span className="button-orb">→</span></button></div><div className="suggestions"><span>试试：</span>{["MCP 是什么？","Agent 与 Workflow 的区别？"].map((item)=><button type="button" key={item} onClick={()=>setQuestion(item)}>{item}</button>)}</div></section>
     {draft && <section className="panel answer-panel"><PanelHead eyebrow="DRAFT" title={draft.title} /><div className="answer-grid"><article><small>一句话理解</small><p>{draft.summary}</p></article><article><small>理解路径</small><p>{draft.explanation}</p></article></div><div className="detail-actions"><button type="button" onClick={()=>setDraft(null)}>放弃草稿</button><button className="primary-button" type="button" onClick={()=>void saveDraft()}><span>保存为知识卡</span><span className="button-orb">＋</span></button></div></section>}
-    <section className="knowledge-grid">{cards.map((card,index)=><button type="button" className={`knowledge-card knowledge-${text(card,"tone","lilac")}`} key={card.id} onClick={()=>setSelected(card)}><span className="card-number">0{index+1}</span><em>{text(card,"level")}</em><h3>{card.title}</h3><p>{text(card,"summary")}</p><b>打开卡片 <i>→</i></b></button>)}</section>
+    <section className="knowledge-grid">{cards.map((card,index)=><button type="button" className={`knowledge-card knowledge-${text(card,"tone","lilac")}`} key={card.id} onClick={()=>setSelected(card)}><header><span className="card-number">0{index+1}</span><em>{text(card,"level")}</em></header><h3>{card.title}</h3><p>{text(card,"summary")}</p><div className="knowledge-card-tags">{list(card,"tags").map((tag)=><span key={tag}>{tag}</span>)}</div><small>{text(card,"explanation")}</small><b>阅读解析 <i>→</i></b></button>)}</section>
   </div>;
 }
 
@@ -385,6 +475,7 @@ function ResourcesView({ items, createItem, updateItem, removeItem, uploadFile, 
   const [adding, setAdding] = useState(false);
   const folders = ["全部资料", ...Array.from(new Set(resources.map((item) => text(item,"folder","未分类"))))];
   const visible = folder === "全部资料" ? resources : resources.filter((item)=>text(item,"folder")===folder);
+  const folderGroups = folders.slice(1).map((name)=>({name,items:resources.filter((item)=>text(item,"folder","未分类")===name)}));
 
   async function addResource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -405,10 +496,10 @@ function ResourcesView({ items, createItem, updateItem, removeItem, uploadFile, 
   if(selected) {
     const fileKey=text(selected,"key");
     const url=fileKey?`/api/files/${encodeURIComponent(fileKey)}`:text(selected,"url");
-    return <div className="view-stack detail-page"><button className="inline-back" type="button" onClick={()=>setSelected(null)}>← 返回资料库</button><section className="detail-hero resource-detail-hero"><div><span className="eyebrow">{text(selected,"folder")} · {text(selected,"type")}</span><h2>{selected.title}</h2><p>{text(selected,"name")||text(selected,"url")||"个人资料条目"}</p></div><span className="status-pill">{numberValue(selected,"progress")}%</span></section><section className="detail-grid"><article><small>阅读状态</small><h3>{text(selected,"status")}</h3><input className="progress-range" type="range" min="0" max="100" value={numberValue(selected,"progress")} onChange={(event)=>void updateItem(selected.id,{data:{progress:Number(event.target.value)}}).then(setSelected)} aria-label="阅读进度" /></article><article><small>所属文件夹</small><h3>{text(selected,"folder")}</h3><p>利用文件夹和搜索快速重新找到这份资料。</p></article></section><div className="detail-actions"><button className="danger-button" type="button" onClick={()=>void removeItem(selected.id).then(()=>{setSelected(null);notify("资料已删除");})}>删除</button>{url?<a className="primary-link" href={url} target="_blank" rel="noreferrer">打开资料 ↗</a>:<button type="button" disabled>暂无可打开内容</button>}</div></div>;
+    return <div className="view-stack resource-detail-page"><button className="inline-back" type="button" onClick={()=>setSelected(null)}>← 返回「{text(selected,"folder")}」</button><section className={`resource-detail-hero resource-${(resources.indexOf(selected)%4)+1}`}><div><span className="eyebrow">{text(selected,"folder")} · {text(selected,"type")}</span><h2>{selected.title}</h2><p>{text(selected,"name")||text(selected,"url")||"集中保存的个人资料条目"}</p></div><div className="resource-detail-progress"><strong>{numberValue(selected,"progress")}%</strong><span>阅读进度</span></div></section><section className="resource-entry-list"><article><span className="entry-icon">{text(selected,"type")==="PDF"?"P":text(selected,"type")==="网页"?"↗":text(selected,"type")==="文件"?"F":"N"}</span><div><small>阅读状态</small><h3>{text(selected,"status")}</h3><input className="progress-range" type="range" min="0" max="100" value={numberValue(selected,"progress")} onChange={(event)=>void updateItem(selected.id,{data:{progress:Number(event.target.value)}}).then(setSelected)} aria-label="阅读进度" /></div></article></section><div className="detail-actions"><button className="danger-button" type="button" onClick={()=>void removeItem(selected.id).then(()=>{setSelected(null);notify("资料已删除");})}>删除</button>{url?<a className="primary-link" href={url} target="_blank" rel="noreferrer">打开资料 ↗</a>:<button type="button" disabled>暂无可打开内容</button>}</div></div>;
   }
 
-  return <div className="view-stack"><section className="toolbar"><div className="filter-pills">{folders.map((item)=><button type="button" key={item} className={folder===item?"active":""} onClick={()=>setFolder(item)}>{item}</button>)}</div><button className="primary-button" type="button" onClick={()=>setAdding(true)}><span>添加资料</span><span className="button-orb">＋</span></button></section><section className="resource-list">{visible.map((item,index)=><button type="button" className={`resource-card resource-${index%4+1}`} key={item.id} onClick={()=>setSelected(item)}><span className="resource-icon">{text(item,"type")==="PDF"?"P":text(item,"type")==="网页"?"↗":text(item,"type")==="文件"?"F":"N"}</span><span><small>{text(item,"folder")} · {text(item,"type")}</small><strong>{item.title}</strong><em>{text(item,"status")}</em></span><div className="progress-line"><i style={{width:`${numberValue(item,"progress")}%`}} /></div><b>{numberValue(item,"progress")}%</b></button>)}</section>{!visible.length&&<EmptyInline text="这个文件夹还没有资料" action="添加资料" onAction={()=>setAdding(true)} />}{adding&&<Drawer title="添加资料" close={()=>setAdding(false)}><form className="editor-form" onSubmit={addResource}><Field label="资料名称"><input name="title" autoFocus placeholder="例如：RAG 产品实践手册" /></Field><div className="form-grid"><Field label="类型"><select name="type"><option>文件</option><option>PDF</option><option>网页</option><option>笔记</option></select></Field><Field label="文件夹"><input name="folder" list="folder-options" placeholder="RAG 与检索增强" /><datalist id="folder-options">{folders.slice(1).map((item)=><option key={item} value={item} />)}</datalist></Field></div><Field label="上传文件（最大 15MB）"><input name="file" type="file" /></Field><Field label="或填写网页链接"><input name="url" type="url" placeholder="https://" /></Field><div className="form-actions"><button className="primary-button" type="submit"><span>保存资料</span><span className="button-orb">✓</span></button></div></form></Drawer>}</div>;
+  return <div className="view-stack"><section className="toolbar">{folder==="全部资料"?<div><span className="eyebrow">RESOURCE LIBRARY</span><strong className="toolbar-title">主题文件夹</strong></div>:<button className="inline-back" type="button" onClick={()=>setFolder("全部资料")}>← 返回全部文件夹</button>}<button className="primary-button" type="button" onClick={()=>setAdding(true)}><span>添加资料</span><span className="button-orb">＋</span></button></section><p className="resource-guide">文件夹用于主题分类；每个文件夹可以收纳多份 PDF、网页、笔记或项目文件。</p>{folder==="全部资料"?<section className="resource-folder-grid">{folderGroups.map(({name,items:folderItems},index)=>{const progress=folderItems.length?Math.round(folderItems.reduce((sum,item)=>sum+numberValue(item,"progress"),0)/folderItems.length):0;return <button type="button" className={`resource-folder-card resource-${index%4+1}`} key={name} onClick={()=>setFolder(name)}><span className="folder-tab" /><span className="folder-label"><strong>{folderItems.length} 项</strong><small>0{index+1}</small></span><span className="folder-sheet"><em>•••</em><h3>{name}</h3><p>{folderItems.map((item)=>item.title).slice(0,2).join(" · ")}</p><div className="progress-track"><i style={{width:`${progress}%`}} /></div><small>阅读进度 <b>{progress}%</b></small></span></button>;})}</section>:<section className="resource-folder-entries"><header><span className="folder-tab" /><div><span className="eyebrow">OPEN FOLDER</span><h2>{folder}</h2><p>{visible.length} 份资料</p></div></header><div>{visible.map((item,index)=><button type="button" className={`resource-entry resource-${index%4+1}`} key={item.id} onClick={()=>setSelected(item)}><span className="resource-icon">{text(item,"type")==="PDF"?"P":text(item,"type")==="网页"?"↗":text(item,"type")==="文件"?"F":"N"}</span><span><small>{text(item,"type")} · {text(item,"status")}</small><strong>{item.title}</strong></span><div className="progress-line"><i style={{width:`${numberValue(item,"progress")}%`}} /></div><b>{numberValue(item,"progress")}%</b></button>)}</div></section>}{folder!=="全部资料"&&!visible.length&&<EmptyInline text="这个文件夹还没有资料" action="添加资料" onAction={()=>setAdding(true)} />}{adding&&<Drawer title="添加资料" close={()=>setAdding(false)}><form className="editor-form" onSubmit={addResource}><Field label="资料名称"><input name="title" autoFocus placeholder="例如：RAG 产品实践手册" /></Field><div className="form-grid"><Field label="类型"><select name="type"><option>文件</option><option>PDF</option><option>网页</option><option>笔记</option></select></Field><Field label="文件夹"><input name="folder" list="folder-options" defaultValue={folder==="全部资料"?"":folder} placeholder="RAG 与检索增强" /><datalist id="folder-options">{folders.slice(1).map((item)=><option key={item} value={item} />)}</datalist></Field></div><Field label="上传文件（最大 15MB）"><input name="file" type="file" /></Field><Field label="或填写网页链接"><input name="url" type="url" placeholder="https://" /></Field><div className="form-actions"><button className="primary-button" type="submit"><span>保存资料</span><span className="button-orb">✓</span></button></div></form></Drawer>}</div>;
 }
 
 function ThoughtsView({ items, createItem, updateItem, removeItem, notify, selectedItem }: WorkspaceActions & { notify:(message:string)=>void; selectedItem?: WorkspaceItem }) {
@@ -420,7 +511,7 @@ function ThoughtsView({ items, createItem, updateItem, removeItem, notify, selec
 
 function QuickCapture({ workspace, close, notify }: { workspace: WorkspaceActions; close:()=>void; notify:(message:string)=>void }) {
   async function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();const form=new FormData(event.currentTarget);const kind=String(form.get("kind")) as ItemKind;const title=String(form.get("title")||"").trim();if(!title)return notify("请输入要收集的内容");const defaults:Record<ItemKind,Record<string,unknown>>={task:{dueDate:todayIso(),priority:"medium",category:"收集箱",done:false,note:String(form.get("note")||"")},job:{company:"待整理",location:"",batch:"",openDate:todayIso(),status:"未分析",category:"其他",keywords:[],description:String(form.get("note")||"")},knowledge:{level:"刚遇到",tone:"lilac",summary:String(form.get("note")||"待整理"),explanation:"",tags:["收集箱"]},resource:{folder:"待整理",type:"网页",status:"待读",progress:0,url:String(form.get("url")||"")},thought:{status:"待继续",content:String(form.get("note")||""),date:todayIso()}};await workspace.createItem({kind,title,data:defaults[kind]});close();notify("已存入工作台");}
-  return <Drawer title="快速收集" close={close}><form className="editor-form" onSubmit={submit}><Field label="收集到哪里"><select name="kind"><option value="task">任务</option><option value="job">求职 JD</option><option value="knowledge">知识卡</option><option value="resource">资料</option><option value="thought">思考</option></select></Field><Field label="标题"><input name="title" autoFocus placeholder="先记下来，之后再整理" /></Field><Field label="链接（可选）"><input name="url" type="url" placeholder="https://" /></Field><Field label="补充说明"><textarea name="note" placeholder="为什么值得保存？下一步是什么？" /></Field><div className="form-actions"><button className="primary-button" type="submit"><span>保存到工作台</span><span className="button-orb">✓</span></button></div></form></Drawer>;
+  return <Modal title="快速收集" close={close}><p className="capture-intro">先把灵感和待办接住，不要求现在就整理完整。</p><form className="editor-form" onSubmit={submit}><Field label="收集到哪里"><select name="kind"><option value="task">任务</option><option value="job">求职 JD</option><option value="knowledge">知识卡</option><option value="resource">资料</option><option value="thought">思考</option></select></Field><Field label="标题"><input name="title" autoFocus placeholder="先记下来，之后再整理" /></Field><Field label="链接（可选）"><input name="url" type="url" placeholder="https://" /></Field><Field label="补充说明"><textarea name="note" placeholder="为什么值得保存？下一步是什么？" /></Field><div className="form-actions"><button className="primary-button" type="submit"><span>保存到工作台</span><span className="button-orb">✓</span></button></div></form></Modal>;
 }
 
 function SettingsDrawer({items,close,notify}:{items:WorkspaceItem[];close:()=>void;notify:(message:string)=>void}){
@@ -431,6 +522,11 @@ function SettingsDrawer({items,close,notify}:{items:WorkspaceItem[];close:()=>vo
 function Drawer({title,close,children}:{title:string;close:()=>void;children:ReactNode}){
   useEffect(()=>{function escape(event:KeyboardEvent){if(event.key==="Escape")close();}window.addEventListener("keydown",escape);return()=>window.removeEventListener("keydown",escape);},[close]);
   return <div className="drawer-layer" role="presentation" onMouseDown={close}><section className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" onMouseDown={(event)=>event.stopPropagation()}><header><div><span className="eyebrow">CAREEROS</span><h2 id="drawer-title">{title}</h2></div><button type="button" aria-label="关闭" onClick={close}>×</button></header>{children}</section></div>;
+}
+
+function Modal({title,close,children}:{title:string;close:()=>void;children:ReactNode}){
+  useEffect(()=>{function escape(event:KeyboardEvent){if(event.key==="Escape")close();}window.addEventListener("keydown",escape);return()=>window.removeEventListener("keydown",escape);},[close]);
+  return <div className="modal-layer" role="presentation" onMouseDown={close}><section className="center-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onMouseDown={(event)=>event.stopPropagation()}><header><div><span className="eyebrow">CAPTURE FIRST</span><h2 id="modal-title">{title}</h2></div><button type="button" aria-label="关闭" onClick={close}>×</button></header>{children}</section></div>;
 }
 
 function Field({label,children}:{label:string;children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>;}
