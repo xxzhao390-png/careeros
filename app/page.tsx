@@ -234,6 +234,8 @@ function TodayView({
   onNotify: (message: string) => void;
 }) {
   const [selectedDate, setSelectedDate] = useState("2026-07-27");
+  const [datePanelOpen, setDatePanelOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date("2026-07-01T00:00:00"));
   const [reviewIndex, setReviewIndex] = useState(0);
   const reviews = [
     { term: "RAG", prompt: "为什么 RAG 能减少模型一本正经地胡说？", answer: "因为它在生成前引入了可核验的外部资料，让回答不只依赖模型参数中的记忆。" },
@@ -258,6 +260,19 @@ function TodayView({
     const next = new Date(current);
     next.setDate(current.getDate() + offset * 7);
     setSelectedDate(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`);
+  }
+  const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const monthOffset = (monthStart.getDay() + 6) % 7;
+  const monthLength = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+  const calendarDays = Array.from({ length: 42 }, (_, index) => {
+    const day = index - monthOffset + 1;
+    return day > 0 && day <= monthLength ? day : null;
+  });
+  function chooseDate(day: number) {
+    const iso = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    setSelectedDate(iso);
+    setDatePanelOpen(false);
+    onNotify(`已切换到 ${calendarMonth.getMonth() + 1} 月 ${day} 日`);
   }
 
   return (
@@ -285,10 +300,37 @@ function TodayView({
           ))}
           </div>
           <button className="week-arrow" type="button" onClick={() => shiftWeek(1)} aria-label="下一周">→</button>
-          <label className="date-picker-button">
-            <span>选择日期</span>
-            <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
-          </label>
+          <div className="date-picker-wrap">
+            <button className="date-picker-button" type="button" aria-expanded={datePanelOpen} onClick={() => setDatePanelOpen((open) => !open)}>
+              <span>选择日期</span>
+            </button>
+            {datePanelOpen && (
+              <section className="date-popover" aria-label="月历日期选择器">
+                <header>
+                  <button type="button" aria-label="上个月" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>←</button>
+                  <strong>{calendarMonth.getFullYear()}年 {calendarMonth.getMonth() + 1}月</strong>
+                  <button type="button" aria-label="下个月" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>→</button>
+                </header>
+                <div className="date-popover-week">{["一","二","三","四","五","六","日"].map((day) => <span key={day}>{day}</span>)}</div>
+                <div className="date-popover-grid">
+                  {calendarDays.map((day, index) => day ? (
+                    <button
+                      type="button"
+                      key={day}
+                      className={selectedDate === `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` ? "active" : ""}
+                      onClick={() => chooseDate(day)}
+                    >{day}</button>
+                  ) : <span key={`empty-${index}`} />)}
+                </div>
+                <button className="date-today-button" type="button" onClick={() => {
+                  const today = new Date();
+                  setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+                  setSelectedDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`);
+                  setDatePanelOpen(false);
+                }}>回到今天</button>
+              </section>
+            )}
+          </div>
         </div>
       </section>
 
@@ -483,12 +525,31 @@ function JobsView({ onNotify, onNavigate }: { onNotify: (message: string) => voi
 function KnowledgeView({ onNotify }: { onNotify: (message: string) => void }) {
   const [answer, setAnswer] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<number | null>(null);
   function ask() {
     setLoading(true);
     window.setTimeout(() => {
       setLoading(false);
       setAnswer(true);
     }, 800);
+  }
+  if (selectedCard !== null) {
+    const card = cards[selectedCard];
+    return (
+      <div className="view-stack knowledge-detail-page">
+        <button className="inline-back" type="button" onClick={() => setSelectedCard(null)}>← 返回知识卡片</button>
+        <section className={`knowledge-detail-hero ${card.tone}`}>
+          <div><span className="eyebrow">KNOWLEDGE NOTE · 0{selectedCard + 1}</span><h2>{card.title}</h2><p>{card.desc}</p></div>
+          <span className="detail-level">{card.level}</span>
+        </section>
+        <section className="knowledge-detail-grid">
+          <article><small>核心概念</small><h3>{card.title} 是什么？</h3><p>{card.desc} 它的价值在于把抽象技术转化为可判断、可复用的工作方法。</p></article>
+          <article><small>使用场景</small><h3>什么时候会用到</h3><ul><li>构建 AI 产品或工作流时</li><li>判断技术方案边界时</li><li>准备产品面试与案例表达时</li></ul></article>
+          <article className="wide"><small>我的理解</small><h3>用一句自己的话记住</h3><p>{selectedCard === 0 ? "RAG 像是让模型先翻资料，再基于资料回答。" : selectedCard === 1 ? "Agent 是能围绕目标连续选择动作的执行者。" : `${card.title} 是连接 AI 概念与实际产品问题的一块积木。`}</p></article>
+        </section>
+        <section className="detail-actions"><button type="button" onClick={() => onNotify("已标记为需要复习")}>标记复习</button><button className="primary-button" type="button" onClick={() => onNotify("理解状态已更新")}><span>更新为已理解</span><span className="button-orb">✓</span></button></section>
+      </div>
+    );
   }
   return (
     <div className="view-stack">
@@ -522,7 +583,7 @@ function KnowledgeView({ onNotify }: { onNotify: (message: string) => void }) {
               <span>{card.level}</span>
               <h3>{card.title}</h3>
               <p>{card.desc}</p>
-              <button type="button">打开卡片 <b>↗</b></button>
+              <button type="button" onClick={() => setSelectedCard(index)}>打开卡片 <b>→</b></button>
             </article>
           ))}
         </section>
@@ -533,6 +594,7 @@ function KnowledgeView({ onNotify }: { onNotify: (message: string) => void }) {
 
 function ResourcesView({ onNotify }: { onNotify: (message: string) => void }) {
   const [resourceTab, setResourceTab] = useState<"学习资料" | "我的项目" | "待整理">("学习资料");
+  const [selectedResource, setSelectedResource] = useState<number | null>(null);
   const resourceGroups = {
     学习资料: [
       ["RAG 与检索增强", "6 项", "35%", "学习中"],
@@ -552,6 +614,33 @@ function ResourcesView({ onNotify }: { onNotify: (message: string) => void }) {
     ],
   } as const;
   const resources = resourceGroups[resourceTab];
+  if (selectedResource !== null) {
+    const item = resources[selectedResource];
+    const entries = [
+      ["PDF", "RAG 产品实践手册", "12 页 · 昨天阅读"],
+      ["网页", "检索增强生成的产品边界", "已收藏 · 8 分钟"],
+      ["笔记", "面试表达：RAG 与微调", "个人笔记 · 已整理"],
+      ["附件", "知识架构思维导图", "PNG · 2.4 MB"],
+    ];
+    return (
+      <div className="view-stack resource-detail-page">
+        <button className="inline-back" type="button" onClick={() => setSelectedResource(null)}>← 返回资料库</button>
+        <section className={`resource-detail-hero resource-${selectedResource + 1}`}>
+          <div><span className="eyebrow">{resourceTab.toUpperCase()}</span><h2>{item[0]}</h2><p>集中管理这个主题下的网页、PDF、笔记与项目附件。</p></div>
+          <div className="resource-detail-progress"><strong>{item[2]}</strong><span>阅读进度</span></div>
+        </section>
+        <section className="resource-entry-list">
+          {entries.slice(0, Math.min(entries.length, Number.parseInt(item[1]))).map(([type, title, meta], index) => (
+            <button type="button" key={title} onClick={() => onNotify(`已打开：${title}`)}>
+              <span className={`entry-icon entry-${index + 1}`}>{type === "PDF" ? "P" : type === "网页" ? "↗" : type === "笔记" ? "N" : "A"}</span>
+              <span><small>{type}</small><strong>{title}</strong><em>{meta}</em></span>
+              <b>→</b>
+            </button>
+          ))}
+        </section>
+      </div>
+    );
+  }
   return (
     <div className="view-stack">
       <section className="section-toolbar">
@@ -567,10 +656,10 @@ function ResourcesView({ onNotify }: { onNotify: (message: string) => void }) {
       <p className="resource-guide">文件夹用于主题分类；每个文件夹可收纳多份 PDF、网页、笔记或项目文件。新上传内容会先进入「待整理」。</p>
       <section className="resource-grid">
         {resources.map((item, index) => (
-          <article className={`resource-card resource-folder resource-${index + 1}`} key={item[0]}>
+          <article className={`resource-card resource-folder resource-${index + 1}`} key={item[0]} onClick={() => setSelectedResource(index)}>
             <div className="folder-label"><span>{item[1]}</span><small>0{index + 1}</small></div>
             <div className="folder-paper">
-              <div className="resource-top"><span>{item[3]}</span><button type="button" aria-label="更多操作">•••</button></div>
+              <div className="resource-top"><span>{item[3]}</span><button type="button" aria-label="更多操作" onClick={(event) => { event.stopPropagation(); onNotify("已打开资料操作"); }}>•••</button></div>
               <h3>{item[0]}</h3>
               <p>{resourceTab === "待整理" ? "暂未归入主题，整理后可移动至学习资料或项目文件夹。" : `按主题集中管理相关 PDF、网页、笔记与附件，共 ${item[1]}。`}</p>
               <div className="progress-track"><span style={{ width: item[2] }} /></div>
@@ -588,6 +677,7 @@ function TasksView({ done, setDone }: { done: number[]; setDone: (value: number[
   const [taskModal, setTaskModal] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [celebrate, setCelebrate] = useState("");
+  const [monthOpen, setMonthOpen] = useState(true);
   const weekTasks = [
     { id: 11, title: "完成 CareerOS 交互原型修改", meta: "周二前 · 高优先级" },
     { id: 12, title: "整理本周新增公司的招聘入口", meta: "周四前 · 求职" },
@@ -625,6 +715,35 @@ function TasksView({ done, setDone }: { done: number[]; setDone: (value: number[
             </article>
           ))}
         </div>
+      </section>
+
+      <section className={`month-task-preview ${monthOpen ? "open" : "collapsed"}`}>
+        <button className="month-preview-head" type="button" aria-expanded={monthOpen} onClick={() => setMonthOpen((open) => !open)}>
+          <span><small className="eyebrow">MONTH OVERVIEW</small><strong>2026 年 7 月任务预览</strong></span>
+          <span className="month-summary"><i className="career" />求职 8　<i className="skill" />学习 11　<i className="work" />项目 6</span>
+          <b>{monthOpen ? "收起 ↑" : "展开 ↓"}</b>
+        </button>
+        {monthOpen && (
+          <div className="month-calendar">
+            <div className="month-week-labels">{["周一","周二","周三","周四","周五","周六","周日"].map((day) => <span key={day}>{day}</span>)}</div>
+            <div className="month-calendar-grid">
+              {Array.from({ length: 35 }, (_, index) => {
+                const day = index - 1;
+                const valid = day >= 1 && day <= 31;
+                const events = valid ? [
+                  ...(day % 3 === 0 ? [{ label: "知识复习", type: "skill", icon: "✦" }] : []),
+                  ...(day % 5 === 0 ? [{ label: "岗位跟进", type: "career", icon: "●" }] : []),
+                  ...([7, 14, 21, 28].includes(day) ? [{ label: "项目迭代", type: "work", icon: "◆" }] : []),
+                ] : [];
+                return (
+                  <article className={`${valid ? "" : "empty"} ${day === 27 ? "today" : ""}`} key={index}>
+                    {valid && <><header><strong>{day}</strong>{day === 27 && <span>今天</span>}</header><div>{events.slice(0, 2).map((event) => <button type="button" className={event.type} key={event.label} onClick={() => setTaskModal(true)}><i>{event.icon}</i>{event.label}</button>)}</div></>}
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="week-overview">
