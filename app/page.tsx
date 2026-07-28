@@ -201,15 +201,10 @@ function TodayView({ items, updateItem, navigate, notify }: WorkspaceActions & {
   const [date, setDate] = useState(todayIso());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
-  const allTasks = items.filter((item) => item.kind === "task");
   const tasks = items.filter((item) => item.kind === "task" && text(item, "dueDate") === date);
   const knowledge = items.filter((item) => item.kind === "knowledge");
   const jobs = items.filter((item) => item.kind === "job");
   const doneCount = tasks.filter((item) => bool(item, "done")).length;
-  const totalDone = allTasks.filter((item) => bool(item, "done")).length;
-  const taskPercent = allTasks.length ? Math.round(totalDone / allTasks.length * 100) : 0;
-  const knowledgePercent = knowledge.length ? Math.round(knowledge.filter((item) => ["能解释","已理解","已收藏"].includes(text(item,"level"))).length / knowledge.length * 100) : 0;
-  const jobPercent = jobs.length ? Math.round(jobs.filter((item) => ["准备中","已投递","面试中","已结束"].includes(text(item,"status"))).length / jobs.length * 100) : 0;
   const review = knowledge[reviewIndex % Math.max(knowledge.length, 1)];
 
   async function toggleTask(item: WorkspaceItem) {
@@ -219,46 +214,24 @@ function TodayView({ items, updateItem, navigate, notify }: WorkspaceActions & {
 
   return (
     <div className="view-stack today-dashboard">
-      <section className="today-overview-grid">
+      <section className="today-first-row">
+        <div className="daily-paper-shell">
+          <article className="daily-paper">
+            <span className="paper-clip" aria-hidden="true" />
+            <header><span>{String(new Date(`${date}T00:00:00`).getMonth()+1).padStart(2,"0")} 月</span><small>{new Date(`${date}T00:00:00`).getFullYear()}</small></header>
+            <div className="paper-date"><strong>{String(new Date(`${date}T00:00:00`).getDate()).padStart(2,"0")}</strong><span>{prettyDate(date).split("周").pop()}</span></div>
+            <p>{encouragements[new Date(`${date}T00:00:00`).getDay()]}</p>
+            <footer><span>{tasks.length} 项计划</span><i>{doneCount} 项完成</i></footer>
+          </article>
+          <div className="daily-date-control"><button type="button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen((open)=>!open)}>选择日期 <span>→</span></button>{calendarOpen&&<DatePicker value={date} choose={(iso)=>{setDate(iso);setCalendarOpen(false);}} />}</div>
+        </div>
+
         <article className="panel today-tasks">
           <PanelHead eyebrow="TODAY" title="今日任务" action="查看全部" onAction={() => navigate("tasks")} />
           <div className="task-list">
             {tasks.length ? tasks.map((task) => <button type="button" className={`task-row ${bool(task, "done") ? "done" : ""}`} key={task.id} onClick={() => void toggleTask(task)}><span className="check">{bool(task, "done") ? "✓" : ""}</span><span><strong>{task.title}</strong><small>{text(task, "category")} · {text(task, "priority") === "high" ? "高优先级" : "按计划推进"}</small></span></button>) : <EmptyInline text="这一天还没有任务" action="去新建" onAction={() => navigate("tasks")} />}
           </div>
         </article>
-
-        <article className="panel progress-card restored-progress">
-          <PanelHead eyebrow="TODAY PROGRESS" title="成长推进" />
-          <div className="concentric-progress">
-            <div className="progress-legend">
-              <button type="button" onClick={() => navigate("knowledge")}><i className="purple" /><span>知识<strong>{knowledgePercent}%</strong></span></button>
-              <button type="button" onClick={() => navigate("tasks")}><i className="blue" /><span>任务<strong>{taskPercent}%</strong></span></button>
-              <button type="button" onClick={() => navigate("jobs")}><i className="orange" /><span>求职<strong>{jobPercent}%</strong></span></button>
-            </div>
-            <div className="multi-ring" aria-label={`知识 ${knowledgePercent}%，任务 ${taskPercent}%，求职 ${jobPercent}%`}>
-              <span className="outer-ring" style={{"--ring-progress":`${knowledgePercent}%`} as CSSProperties} />
-              <span className="middle-ring" style={{"--ring-progress":`${taskPercent}%`} as CSSProperties} />
-              <span className="inner-ring" style={{"--ring-progress":`${jobPercent}%`} as CSSProperties} />
-              <strong>{doneCount}/{tasks.length}</strong><small>今日完成</small>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section className="daily-page-calendar">
-        <article className="daily-paper">
-          <span className="paper-clip" aria-hidden="true" />
-          <header><span>{String(new Date(`${date}T00:00:00`).getMonth()+1).padStart(2,"0")} 月</span><small>{new Date(`${date}T00:00:00`).getFullYear()}</small></header>
-          <div className="paper-date"><strong>{String(new Date(`${date}T00:00:00`).getDate()).padStart(2,"0")}</strong><span>{prettyDate(date).split("周").pop()}</span></div>
-          <p>{encouragements[new Date(`${date}T00:00:00`).getDay()]}</p>
-          <footer><span>{tasks.length} 项计划</span><i>{doneCount} 项完成</i></footer>
-        </article>
-        <div className="daily-paper-copy">
-          <span className="eyebrow">ONE DAY · ONE PAGE</span>
-          <h2>一天一页，把生活过成<br/>可以慢慢翻阅的日历。</h2>
-          <p>每天只看今天的日期、计划与一句鼓励。选择其他日期时，这一页也会一起翻到那一天。</p>
-          <div className="daily-date-control"><button type="button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen((open)=>!open)}>选择另一页日期 <span>→</span></button>{calendarOpen&&<DatePicker value={date} choose={(iso)=>{setDate(iso);setCalendarOpen(false);}} />}</div>
-        </div>
       </section>
 
       {review && <section className="review-section restored-review">
