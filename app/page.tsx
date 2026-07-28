@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { ItemKind, WorkspaceItem } from "../lib/workspace";
 import { useWorkspace } from "./use-workspace";
 
@@ -358,7 +359,13 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
     </section>
     </> : <MonthCalendar tasks={tasks} edit={setEditing} createOnDate={(iso) => { setDraftDate(iso); setEditing("new"); }} />}
 
-    {celebrating&&<div className="celebration" role="status"><div className="confetti">{Array.from({length:18},(_,index)=><i key={index} style={{"--i":index} as CSSProperties} />)}</div><div className="celebration-core"><span>✓</span><strong>完成一件，离目标更近一点</strong></div></div>}
+    {celebrating && typeof document !== "undefined" && createPortal(
+      <div className="celebration" role="status" aria-live="polite">
+        <div className="confetti">{Array.from({length:18},(_,index)=><i key={index} style={{"--i":index} as CSSProperties} />)}</div>
+        <div className="celebration-core"><span>✓</span><strong>完成一件，离目标更近一点</strong></div>
+      </div>,
+      document.body,
+    )}
     {editing && <Modal title={editing === "new" ? "新建任务" : "编辑任务"} close={() => setEditing(null)}>
       <form className="editor-form compact-task-form" onSubmit={saveTask}>
         <Field label="任务名称"><input name="title" autoFocus defaultValue={editing === "new" ? "" : editing.title} placeholder="例如：整理百度 AI 产品运营 JD" /></Field>
