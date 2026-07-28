@@ -542,7 +542,10 @@ function ResourcesView({ items, createItem, updateItem, removeItem, uploadFile, 
   const [folder, setFolder] = useState("全部资料");
   const [selected, setSelected] = useState<WorkspaceItem | null>(selectedItem?.kind === "resource" ? selectedItem : null);
   const [adding, setAdding] = useState(false);
-  const folders = ["全部资料", ...Array.from(new Set(resources.map((item) => text(item,"folder","未分类"))))];
+  const [addMode,setAddMode]=useState<"file"|"note">("file");
+  const [uploadName,setUploadName]=useState("");
+  const [uploading,setUploading]=useState(false);
+  const folders = ["全部资料", ...Array.from(new Set(["网课笔记",...resources.map((item) => text(item,"folder","未分类"))]))];
   const visible = folder === "全部资料" ? resources : resources.filter((item)=>text(item,"folder")===folder);
   const folderGroups = folders.slice(1).map((name)=>({name,items:resources.filter((item)=>text(item,"folder","未分类")===name)}));
 
@@ -552,23 +555,51 @@ function ResourcesView({ items, createItem, updateItem, removeItem, uploadFile, 
     const form = new FormData(formElement);
     const title = String(form.get("title")||"").trim();
     if(!title) return notify("请输入资料名称");
-    const file = form.get("file");
-    let fileData: Record<string, unknown> = {};
-    if(file instanceof File && file.size) {
-      notify("正在上传文件…");
-      fileData = await uploadFile(file);
+    if(addMode==="note") {
+      const content=String(form.get("content")||"").trim();
+      if(!content)return notify("请先写下网课笔记内容");
+      const item=await createItem({kind:"resource",title,data:{folder:"网课笔记",type:"笔记",status:"已记录",progress:100,content,courseDate:String(form.get("courseDate")||todayIso())}});
+      setAdding(false);setSelected(item);notify("网课笔记已保存");return;
     }
-    const item = await createItem({kind:"resource",title,data:{folder:String(form.get("folder")||"未分类"),type:String(form.get("type")),status:"待读",progress:0,url:String(form.get("url")||""),...fileData}});
-    setAdding(false); setSelected(item); notify("资料已保存");
+    const file = form.get("file");
+    const url=String(form.get("url")||"").trim();
+    if(!(file instanceof File&&file.size)&&!url)return notify("请选择本地文件，或填写一个网页链接");
+    let fileData: Record<string, unknown> = {};
+    let resourceType="网页";
+    try {
+      if(file instanceof File && file.size) {
+        setUploading(true);notify("正在上传本地文件…");
+        const uploaded=await uploadFile(file);
+        fileData={key:uploaded.key,name:uploaded.name,size:uploaded.size,mimeType:uploaded.type};
+        const extension=file.name.split(".").pop()?.toLowerCase();
+        resourceType=extension==="pdf"?"PDF":extension&&["doc","docx","ppt","pptx","xls","xlsx"].includes(extension)?"文件":"文件";
+      }
+      const item = await createItem({kind:"resource",title,data:{folder:String(form.get("folder")||"未分类"),type:resourceType,status:"待读",progress:0,url,...fileData}});
+      setAdding(false);setUploadName("");setSelected(item);notify(file instanceof File&&file.size?"文件已上传并保存":"网页资料已保存");
+    } catch(cause) {
+      notify(cause instanceof Error?cause.message:"上传失败，请重试");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function saveNote(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();if(!selected)return;
+    const form=new FormData(event.currentTarget);
+    const title=String(form.get("title")||"").trim();const content=String(form.get("content")||"").trim();
+    if(!title||!content)return notify("请填写笔记标题和内容");
+    const item=await updateItem(selected.id,{title,data:{folder:"网课笔记",type:"笔记",status:text(selected,"status","已记录"),progress:100,content,courseDate:String(form.get("courseDate")||todayIso())}});
+    setSelected(item);notify("笔记已保存");
   }
 
   if(selected) {
     const fileKey=text(selected,"key");
     const url=fileKey?`/api/files/${encodeURIComponent(fileKey)}`:text(selected,"url");
+    if(text(selected,"type")==="笔记")return <div className="view-stack resource-detail-page"><button className="inline-back" type="button" onClick={()=>setSelected(null)}>← 返回「网课笔记」</button><form className="course-note-paper" onSubmit={saveNote}><header><div><span className="eyebrow">COURSE NOTE</span><input name="title" defaultValue={selected.title} aria-label="笔记标题" /></div><label>上课日期<input name="courseDate" type="date" defaultValue={text(selected,"courseDate",todayIso())} /></label></header><textarea name="content" defaultValue={text(selected,"content")} aria-label="笔记内容" placeholder={"在这里记录课程重点、自己的理解和下一步行动……\n\n一、今天学到了什么\n\n二、哪些内容还没理解\n\n三、课后要做什么"} /><footer><span>内容会随工作台数据一起保存。</span><div><button className="danger-button" type="button" onClick={()=>void removeItem(selected.id).then(()=>{setSelected(null);notify("笔记已删除");})}>删除笔记</button><button className="primary-button" type="submit"><span>保存笔记</span><span className="button-orb">✓</span></button></div></footer></form></div>;
     return <div className="view-stack resource-detail-page"><button className="inline-back" type="button" onClick={()=>setSelected(null)}>← 返回「{text(selected,"folder")}」</button><section className={`resource-detail-hero resource-${(resources.indexOf(selected)%4)+1}`}><div><span className="eyebrow">{text(selected,"folder")} · {text(selected,"type")}</span><h2>{selected.title}</h2><p>{text(selected,"name")||text(selected,"url")||"集中保存的个人资料条目"}</p></div><div className="resource-detail-progress"><strong>{numberValue(selected,"progress")}%</strong><span>阅读进度</span></div></section><section className="resource-entry-list"><article><span className="entry-icon">{text(selected,"type")==="PDF"?"P":text(selected,"type")==="网页"?"↗":text(selected,"type")==="文件"?"F":"N"}</span><div><small>阅读状态</small><h3>{text(selected,"status")}</h3><input className="progress-range" type="range" min="0" max="100" value={numberValue(selected,"progress")} onChange={(event)=>void updateItem(selected.id,{data:{progress:Number(event.target.value)}}).then(setSelected)} aria-label="阅读进度" /></div></article></section><div className="detail-actions"><button className="danger-button" type="button" onClick={()=>void removeItem(selected.id).then(()=>{setSelected(null);notify("资料已删除");})}>删除</button>{url?<a className="primary-link" href={url} target="_blank" rel="noreferrer">打开资料 ↗</a>:<button type="button" disabled>暂无可打开内容</button>}</div></div>;
   }
 
-  return <div className="view-stack"><section className="toolbar">{folder==="全部资料"?<div><span className="eyebrow">RESOURCE LIBRARY</span><strong className="toolbar-title">主题文件夹</strong></div>:<button className="inline-back" type="button" onClick={()=>setFolder("全部资料")}>← 返回全部文件夹</button>}<button className="primary-button" type="button" onClick={()=>setAdding(true)}><span>添加资料</span><span className="button-orb">＋</span></button></section><p className="resource-guide">文件夹用于主题分类；每个文件夹可以收纳多份 PDF、网页、笔记或项目文件。</p>{folder==="全部资料"?<section className="resource-folder-grid">{folderGroups.map(({name,items:folderItems},index)=>{const progress=folderItems.length?Math.round(folderItems.reduce((sum,item)=>sum+numberValue(item,"progress"),0)/folderItems.length):0;return <button type="button" className={`resource-folder-card resource-${index%4+1}`} key={name} onClick={()=>setFolder(name)}><span className="folder-tab" /><span className="folder-label"><strong>{folderItems.length} 项</strong><small>0{index+1}</small></span><span className="folder-sheet"><em>•••</em><h3>{name}</h3><p>{folderItems.map((item)=>item.title).slice(0,2).join(" · ")}</p><div className="progress-track"><i style={{width:`${progress}%`}} /></div><small>阅读进度 <b>{progress}%</b></small></span></button>;})}</section>:<section className="resource-folder-entries"><header><span className="folder-tab" /><div><span className="eyebrow">OPEN FOLDER</span><h2>{folder}</h2><p>{visible.length} 份资料</p></div></header><div>{visible.map((item,index)=><button type="button" className={`resource-entry resource-${index%4+1}`} key={item.id} onClick={()=>setSelected(item)}><span className="resource-icon">{text(item,"type")==="PDF"?"P":text(item,"type")==="网页"?"↗":text(item,"type")==="文件"?"F":"N"}</span><span><small>{text(item,"type")} · {text(item,"status")}</small><strong>{item.title}</strong></span><div className="progress-line"><i style={{width:`${numberValue(item,"progress")}%`}} /></div><b>{numberValue(item,"progress")}%</b></button>)}</div></section>}{folder!=="全部资料"&&!visible.length&&<EmptyInline text="这个文件夹还没有资料" action="添加资料" onAction={()=>setAdding(true)} />}{adding&&<Drawer title="添加资料" close={()=>setAdding(false)}><form className="editor-form" onSubmit={addResource}><Field label="资料名称"><input name="title" autoFocus placeholder="例如：RAG 产品实践手册" /></Field><div className="form-grid"><Field label="类型"><select name="type"><option>文件</option><option>PDF</option><option>网页</option><option>笔记</option></select></Field><Field label="文件夹"><input name="folder" list="folder-options" defaultValue={folder==="全部资料"?"":folder} placeholder="RAG 与检索增强" /><datalist id="folder-options">{folders.slice(1).map((item)=><option key={item} value={item} />)}</datalist></Field></div><Field label="上传文件（最大 15MB）"><input name="file" type="file" /></Field><Field label="或填写网页链接"><input name="url" type="url" placeholder="https://" /></Field><div className="form-actions"><button className="primary-button" type="submit"><span>保存资料</span><span className="button-orb">✓</span></button></div></form></Drawer>}</div>;
+  return <div className="view-stack"><section className="toolbar">{folder==="全部资料"?<div><span className="eyebrow">RESOURCE LIBRARY</span><strong className="toolbar-title">主题文件夹</strong></div>:<button className="inline-back" type="button" onClick={()=>setFolder("全部资料")}>← 返回全部文件夹</button>}<div className="resource-toolbar-actions">{folder==="网课笔记"&&<button className="secondary-button" type="button" onClick={()=>{setAddMode("note");setAdding(true);}}>写网课笔记</button>}<button className="primary-button" type="button" onClick={()=>{setAddMode(folder==="网课笔记"?"note":"file");setAdding(true);}}><span>{folder==="网课笔记"?"新建笔记":"添加资料"}</span><span className="button-orb">＋</span></button></div></section><p className="resource-guide">本地文件会上传到你的云端资料库；“网课笔记”用于记录课程重点、理解和课后行动。</p>{folder==="全部资料"?<section className="resource-folder-grid">{folderGroups.map(({name,items:folderItems},index)=>{const progress=folderItems.length?Math.round(folderItems.reduce((sum,item)=>sum+numberValue(item,"progress"),0)/folderItems.length):0;return <button type="button" className={`resource-folder-card resource-${index%4+1} ${name==="网课笔记"?"course-note-folder":""}`} key={name} onClick={()=>setFolder(name)}><span className="folder-tab" /><span className="folder-label"><strong>{folderItems.length} 项</strong><small>0{index+1}</small></span><span className="folder-sheet"><em>{name==="网课笔记"?"NOTE":"•••"}</em><h3>{name}</h3><p>{folderItems.length?folderItems.map((item)=>item.title).slice(0,2).join(" · "):name==="网课笔记"?"记录每一节网课的重点与思考":"这个文件夹还没有资料"}</p><div className="progress-track"><i style={{width:`${progress}%`}} /></div><small>{name==="网课笔记"?"笔记整理度":"阅读进度"} <b>{progress}%</b></small></span></button>;})}</section>:<section className="resource-folder-entries"><header><span className="folder-tab" /><div><span className="eyebrow">{folder==="网课笔记"?"COURSE NOTES":"OPEN FOLDER"}</span><h2>{folder}</h2><p>{visible.length} 份{folder==="网课笔记"?"笔记":"资料"}</p></div></header><div>{visible.map((item,index)=><button type="button" className={`resource-entry resource-${index%4+1}`} key={item.id} onClick={()=>setSelected(item)}><span className="resource-icon">{text(item,"type")==="PDF"?"P":text(item,"type")==="网页"?"↗":text(item,"type")==="文件"?"F":"N"}</span><span><small>{text(item,"type")} · {text(item,"status")}</small><strong>{item.title}</strong></span><div className="progress-line"><i style={{width:`${numberValue(item,"progress")}%`}} /></div><b>{numberValue(item,"progress")}%</b></button>)}</div></section>}{folder!=="全部资料"&&!visible.length&&<EmptyInline text={folder==="网课笔记"?"还没有网课笔记":"这个文件夹还没有资料"} action={folder==="网课笔记"?"写第一篇笔记":"添加资料"} onAction={()=>{setAddMode(folder==="网课笔记"?"note":"file");setAdding(true);}} />}{adding&&<Modal title={addMode==="note"?"新建网课笔记":"上传本地资料"} close={()=>{if(!uploading)setAdding(false);}}><div className="resource-add-tabs"><button type="button" className={addMode==="file"?"active":""} onClick={()=>setAddMode("file")}>上传文件</button><button type="button" className={addMode==="note"?"active":""} onClick={()=>setAddMode("note")}>写网课笔记</button></div><form className="editor-form resource-add-form" onSubmit={addResource}><Field label={addMode==="note"?"笔记标题":"资料名称"}><input name="title" autoFocus placeholder={addMode==="note"?"例如：AI 产品经理课程第 3 讲":"例如：RAG 产品实践手册"} /></Field>{addMode==="note"?<><Field label="上课日期"><input name="courseDate" type="date" defaultValue={todayIso()} /></Field><Field label="笔记内容"><textarea className="course-note-input" name="content" placeholder={"记录课程重点、自己的理解和课后行动……\n\n可以直接粘贴你已有的网课笔记。"} /></Field></>:<><Field label="保存到文件夹"><input name="folder" list="folder-options" defaultValue={folder==="全部资料"?"":folder} placeholder="例如：RAG 与检索增强" /><datalist id="folder-options">{folders.slice(1).filter((item)=>item!=="网课笔记").map((item)=><option key={item} value={item} />)}</datalist></Field><label className={`local-file-picker ${uploadName?"selected":""}`}><input name="file" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.zip,image/*" onChange={(event)=>setUploadName(event.target.files?.[0]?.name||"")} /><span className="file-picker-icon">↑</span><span><strong>{uploadName||"选择电脑里的文件"}</strong><small>{uploadName?"已选择，保存后开始上传":"PDF、Office、图片、压缩包等，最大 15MB"}</small></span><b>浏览文件</b></label><div className="upload-divider"><span>或</span></div><Field label="网页链接"><input name="url" type="url" placeholder="https://" /></Field></>}<div className="form-actions"><button className="primary-button" type="submit" disabled={uploading}><span>{uploading?"正在上传…":addMode==="note"?"保存笔记":"上传并保存"}</span><span className="button-orb">{uploading?"…":"✓"}</span></button></div></form></Modal>}</div>;
 }
 
 function ThoughtsView({ items, createItem, updateItem, removeItem, notify, selectedItem }: WorkspaceActions & { notify:(message:string)=>void; selectedItem?: WorkspaceItem }) {
