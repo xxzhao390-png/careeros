@@ -276,6 +276,8 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
   const [editing, setEditing] = useState<WorkspaceItem | "new" | null>(selectedItem?.kind === "task" ? selectedItem : null);
   const [draftDate, setDraftDate] = useState(todayIso());
   const [draftCategory, setDraftCategory] = useState("工作");
+  const [inlineSection,setInlineSection]=useState<string|null>(null);
+  const [inlinePriority,setInlinePriority]=useState<"low"|"medium"|"high">("medium");
   const [celebrating, setCelebrating] = useState(false);
   const years = Array.from(new Set(tasks.map((item)=>text(item,"dueDate").slice(0,4)).filter(Boolean))).sort().reverse();
   const [archiveYear, setArchiveYear] = useState(years[0] || String(new Date().getFullYear()));
@@ -313,21 +315,34 @@ function TasksView({ items, createItem, updateItem, removeItem, notify, selected
     }
   }
 
+  async function addInlineTask(event:FormEvent<HTMLFormElement>,category:string){
+    event.preventDefault();
+    const form=new FormData(event.currentTarget);
+    const title=String(form.get("inlineTitle")||"").trim();
+    if(!title){setInlineSection(null);return;}
+    await createItem({kind:"task",title,data:{dueDate:todayIso(),priority:inlinePriority,category,note:"",done:false}});
+    setInlineSection(null);setInlinePriority("medium");notify("任务已添加");
+  }
+
+  function cycleInlinePriority(){
+    setInlinePriority((current)=>current==="low"?"medium":current==="medium"?"high":"low");
+  }
+
   return <div className="view-stack">
     <section className="toolbar">
       <div className="segmented">{(["list","calendar"] as const).map((item) => <button type="button" key={item} className={mode === item ? "active" : ""} onClick={() => setMode(item)}>{item === "list" ? "清单" : "月历"}</button>)}</div>
-      {mode === "list" && <><div className="filter-pills">{(["all","open","done"] as const).map((item) => <button type="button" key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item === "all" ? "全部" : item === "open" ? "待完成" : "已完成"}</button>)}</div>
-      <button className="primary-button" type="button" onClick={() => { setDraftDate(todayIso()); setDraftCategory("工作"); setEditing("new"); }}><span>新建任务</span><span className="button-orb">＋</span></button></>}
+      {mode === "list" && <div className="filter-pills">{(["all","open","done"] as const).map((item) => <button type="button" key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item === "all" ? "全部" : item === "open" ? "待完成" : "已完成"}</button>)}</div>}
     </section>
     {mode === "list" ? <><section className="task-quadrants">
       {taskSections.map((section)=>{const sectionTasks=visible.filter((task)=>section.name==="工作"?["工作","项目"].includes(text(task,"category")):text(task,"category")===section.name);return <article className={`task-section task-section-${section.tone}`} key={section.name}>
         <header><div><span className="eyebrow">{section.eyebrow}</span><h2>{section.name}</h2><p>{section.hint}</p></div><strong>{sectionTasks.filter((item)=>bool(item,"done")).length}/{sectionTasks.length}</strong></header>
         <div className="section-task-list">{sectionTasks.map((task)=><article className={bool(task,"done")?"done":""} key={task.id}>
           <button className="task-check" type="button" aria-label={bool(task,"done")?`恢复 ${task.title}`:`完成 ${task.title}`} onClick={()=>void toggle(task)}>{bool(task,"done")?"✓":""}</button>
-          <button className="section-task-copy" type="button" onClick={()=>setEditing(task)}><strong>{task.title}</strong><small>{text(task,"dueDate")} · {text(task,"priority")}</small></button>
+          <span className={`line-priority priority-${text(task,"priority","medium")}`} aria-label={`${text(task,"priority","medium")} 优先级`} />
+          <button className="section-task-copy" type="button" onClick={()=>setEditing(task)}><strong>{task.title}</strong></button>
           <button className="section-task-delete" type="button" aria-label={`删除 ${task.title}`} onClick={()=>void removeItem(task.id).then(()=>notify("任务已删除"))}>×</button>
-        </article>)}</div>
-        <button className="section-add-task" type="button" onClick={()=>{setDraftDate(todayIso());setDraftCategory(section.name);setEditing("new");}}>＋ 添加{section.name}任务</button>
+        </article>)}{inlineSection===section.name&&<form className="inline-task-entry" onSubmit={(event)=>void addInlineTask(event,section.name)}><span className="inline-check" /><button className={`line-priority priority-${inlinePriority}`} type="button" aria-label="切换优先级颜色" onClick={cycleInlinePriority} /><input name="inlineTitle" autoFocus aria-label={`输入${section.name}任务`} placeholder="直接输入任务，按回车保存" onKeyDown={(event)=>{if(event.key==="Escape")setInlineSection(null);}} /><button type="submit" aria-label="保存任务">↵</button></form>}</div>
+        <button className="section-add-task" type="button" onClick={()=>{setInlinePriority("medium");setInlineSection(section.name);}}>＋ 添加{section.name}任务</button>
       </article>})}
     </section>
 
