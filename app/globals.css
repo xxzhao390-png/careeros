@@ -341,3 +341,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Folder creation and list-first notes navigation */
 .folder-name-field{position:relative}.folder-name-field>span{padding-right:110px}.new-folder-button{position:absolute;right:0;top:-8px;min-height:30px;padding:0 10px;border:0;border-radius:999px;background:#eee7f8;color:#674da8;cursor:pointer;font-size:8px;transition:transform 480ms var(--curve),background 480ms var(--curve)}.new-folder-button:hover{background:#e5daf5;transform:translateY(-1px)}.folder-field-hint{margin-top:-4px;color:#918896;font-size:8px}.notes-workspace:not(.show-editor){display:block}.notes-workspace:not(.show-editor) .notes-list-panel{width:100%;min-height:610px}.notes-workspace:not(.show-editor) .note-editor-panel{display:none}.notes-workspace.show-editor{display:block}.notes-workspace.show-editor .notes-list-panel{display:none}.notes-workspace.show-editor .note-editor-panel{display:flex;width:100%;min-height:640px}.notes-workspace.show-editor .mobile-note-back{display:inline-flex!important}.notes-workspace:not(.show-editor) .notes-scroll{max-height:none}.notes-workspace:not(.show-editor) .note-list-row{margin:4px 0}.notes-workspace:not(.show-editor) .note-list-item{min-height:92px}@media(max-width:620px){.new-folder-button{position:static;align-self:flex-start;margin-top:-2px}.folder-name-field>span{padding-right:0}}
+
+/* One-scroll modal: expand the dialog and keep the page behind it fixed. */
+.modal-layer{overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:auto}
+.center-modal{width:min(720px,100%);max-height:none;overflow:visible;scrollbar-gutter:auto}
+.center-modal .resource-add-form{gap:12px}
+.center-modal .resource-add-tabs{margin-top:14px}
+.center-modal .field{gap:6px}
+.center-modal .field input{min-height:44px}
+.center-modal .local-file-picker{min-height:92px;padding:13px 16px}
+@media(max-width:760px){.center-modal{max-height:none;overflow:visible}}
