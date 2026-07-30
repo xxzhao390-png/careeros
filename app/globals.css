@@ -351,3 +351,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .center-modal .field input{min-height:44px}
 .center-modal .local-file-picker{min-height:92px;padding:13px 16px}
 @media(max-width:760px){.center-modal{max-height:none;overflow:visible}}
+
+/* Consistent action controls and narrow-screen spacing */
+.secondary-button,.danger-button,.inline-back,.mobile-note-back{min-height:42px;padding:0 16px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;font-size:10px;line-height:1}
+.inline-back{min-width:88px;background:#f1edf7;box-shadow:inset 0 0 0 1px rgba(104,78,165,.06)}
+.mobile-note-back{min-width:76px;flex:none}
+.form-actions{align-items:center;flex-wrap:wrap;gap:10px}
+.form-actions>.secondary-button,.form-actions>.danger-button{min-width:82px}
+.new-note-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;min-width:0}
+.new-note-actions .primary-button{flex:none;min-width:118px;justify-content:center;padding:0 20px;white-space:nowrap}
+.new-note-actions select{flex:none;min-width:92px}
+.note-editor-panel>header{column-gap:10px;row-gap:8px}
+@media(max-width:760px){.form-actions{justify-content:stretch}.form-actions>button{flex:1 1 auto}.new-note-actions{width:100%;justify-content:flex-start}.new-note-actions .primary-button{flex:1 1 132px}.new-note-actions select{flex:1 1 96px}.note-editor-panel>header{align-items:center}.note-editor-panel>header .save-state{margin-left:auto}}
