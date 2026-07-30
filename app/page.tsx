@@ -675,7 +675,8 @@ function Drawer({title,close,children}:{title:string;close:()=>void;children:Rea
 
 function Modal({title,close,children}:{title:string;close:()=>void;children:ReactNode}){
   useEffect(()=>{function escape(event:KeyboardEvent){if(event.key==="Escape")close();}const previousOverflow=document.body.style.overflow;document.body.style.overflow="hidden";window.addEventListener("keydown",escape);return()=>{document.body.style.overflow=previousOverflow;window.removeEventListener("keydown",escape);};},[close]);
-  return <div className="modal-layer" role="presentation" onMouseDown={close}><section className="center-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onMouseDown={(event)=>event.stopPropagation()}><header><div><span className="eyebrow">CAPTURE FIRST</span><h2 id="modal-title">{title}</h2></div><button type="button" aria-label="关闭" onClick={close}>×</button></header>{children}</section></div>;
+  if(typeof document==="undefined")return null;
+  return createPortal(<div className="modal-layer" role="presentation" onMouseDown={close}><section className="center-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onMouseDown={(event)=>event.stopPropagation()}><header><div><span className="eyebrow">CAPTURE FIRST</span><h2 id="modal-title">{title}</h2></div><button type="button" aria-label="关闭" onClick={close}>×</button></header>{children}</section></div>,document.body);
 }
 
 function Field({label,children}:{label:string;children:ReactNode}){const folderField=label==="保存到文件夹";return <label className={`field ${folderField?"folder-name-field":""}`}><span>{label}</span>{folderField&&<button type="button" className="new-folder-button" onClick={(event)=>{event.preventDefault();const input=event.currentTarget.parentElement?.querySelector("input");if(input){input.value="";input.focus();}}}>＋ 新建文件夹</button>}{children}{folderField&&<small className="folder-field-hint">输入新名称后保存资料，文件夹会自动创建。</small>}</label>;}
