@@ -58,3 +58,36 @@ test("layout includes responsive and accessibility safeguards", async () => {
   assert.match(page, /aria-modal="true"/);
   assert.match(page, /aria-expanded=/);
 });
+
+test("server routes enforce user ownership", async () => {
+  const [itemsRoute, itemRoute, fileRoute, auth] = await Promise.all([
+    readFile(new URL("../app/api/items/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/items/[id]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/files/[key]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/server-auth.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(itemsRoute, /WHERE user_id = \?/);
+  assert.match(itemRoute, /WHERE id = \? AND user_id = \?/);
+  assert.match(fileRoute, /object_key = \? AND user_id = \?/);
+  assert.match(auth, /oai-authenticated-user-email/);
+  assert.doesNotMatch(itemsRoute, /payload\.userId|payload\.user_id/);
+});
+
+test("AI workflows are optional, validated, and rate limited", async () => {
+  const [page, aiService, jdRoute, noteRoute] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/ai.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/v1/ai/jd/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/v1/ai/notes/route.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /AI 整理/);
+  assert.match(page, /原文不会被删除/);
+  assert.match(aiService, /AI_NOT_CONFIGURED/);
+  assert.match(aiService, /COUNT\(\*\).*ai_runs/);
+  assert.match(aiService, /validateJd/);
+  assert.match(aiService, /validateNote/);
+  assert.match(jdRoute, /runAi\(user, "jd_structure"/);
+  assert.match(noteRoute, /runAi\(user, "note_organize"/);
+});
