@@ -30,5 +30,8 @@ declare module "cloudflare:workers" {
   export const env: {
     DB: D1Database;
     FILES: R2Bucket;
+    AI_API_KEY?: string;
+    AI_BASE_URL?: string;
+    AI_MODEL?: string;
   };
 }

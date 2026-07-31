@@ -362,6 +362,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .new-note-actions .primary-button{flex:none;min-width:118px;justify-content:center;padding:0 20px;white-space:nowrap}
 .new-note-actions select{flex:none;min-width:92px}
 .note-editor-panel>header{column-gap:10px;row-gap:8px}
+.note-editor-panel>header>.ai-organize-button{background:linear-gradient(135deg,#8159d8,#d566c2);color:#fff;box-shadow:0 8px 18px rgba(119,79,184,.18)}.note-editor-panel>header>.ai-organize-button:disabled{opacity:.6;cursor:wait}
 @media(max-width:760px){.form-actions{justify-content:stretch}.form-actions>button{flex:1 1 auto}.new-note-actions{width:100%;justify-content:flex-start}.new-note-actions .primary-button{flex:1 1 132px}.new-note-actions select{flex:1 1 96px}.note-editor-panel>header{align-items:center}.note-editor-panel>header .save-state{margin-left:auto}}
 
 /* Lightweight document controls for quick notes */
