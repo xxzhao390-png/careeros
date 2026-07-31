@@ -25,7 +25,9 @@ async function userIdFor(email: string) {
   return `usr_${shortHash}`;
 }
 
-export async function ensureMvpSchema() {
+let schemaPromise: Promise<void> | null = null;
+
+async function initializeMvpSchema() {
   await env.DB.batch([
     env.DB.prepare("CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, display_name TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS workspace_items (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"),
@@ -36,10 +38,25 @@ export async function ensureMvpSchema() {
   ]);
   const columns = await env.DB.prepare("PRAGMA table_info(workspace_items)").all<{ name: string }>();
   if (!columns.results.some((column) => column.name === "user_id")) {
-    await env.DB.prepare("ALTER TABLE workspace_items ADD COLUMN user_id TEXT REFERENCES users(id)").run();
+    try {
+      await env.DB.prepare("ALTER TABLE workspace_items ADD COLUMN user_id TEXT REFERENCES users(id)").run();
+    } catch (cause) {
+      // Another Worker request may have completed the same one-time migration.
+      if (!(cause instanceof Error) || !cause.message.includes("duplicate column name")) throw cause;
+    }
   }
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS workspace_items_user_kind_idx ON workspace_items(user_id, kind)").run();
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS workspace_items_user_updated_idx ON workspace_items(user_id, updated_at)").run();
+}
+
+export function ensureMvpSchema() {
+  if (!schemaPromise) {
+    schemaPromise = initializeMvpSchema().catch((cause) => {
+      schemaPromise = null;
+      throw cause;
+    });
+  }
+  return schemaPromise;
 }
 
 export async function authenticate(request: Request): Promise<AuthenticatedUser | Response> {
