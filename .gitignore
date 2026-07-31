@@ -50,3 +50,6 @@ next-env.d.ts
 /.build.*
 /.qa.*
 /tsconfig.tsbuildinfo
+/.playwright-browsers/
+/playwright-report/
+/test-results/

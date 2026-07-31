@@ -81,6 +81,7 @@ AI 功能是可选的。未配置模型时，核心数据功能仍可使用，JD
 - [API 接口规范](docs/API.md)
 - [部署说明](docs/DEPLOYMENT.md)
 - [安全说明](docs/SECURITY.md)
+- [测试说明](docs/TESTING.md)
 
 ## 当前阶段
 
