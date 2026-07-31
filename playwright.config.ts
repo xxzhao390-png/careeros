@@ -7,7 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: process.env.CAREEROS_TEST_URL || "http://127.0.0.1:3000",
+    baseURL: process.env.CAREEROS_TEST_URL || "http://localhost:3000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev",
-    url: "http://127.0.0.1:3000",
+    url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
