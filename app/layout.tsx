@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { requireChatGPTUser } from "./chatgpt-auth";
+
+export const dynamic = "force-dynamic";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,7 +23,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <AuthenticatedWorkspace>{children}</AuthenticatedWorkspace>
+      </body>
     </html>
   );
+}
+
+async function AuthenticatedWorkspace({ children }: Readonly<{ children: React.ReactNode }>) {
+  await requireChatGPTUser("/");
+  return children;
 }
