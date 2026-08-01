@@ -98,6 +98,6 @@ test("AI workflows are optional, validated, and rate limited", async () => {
   assert.match(noteRoute, /runAi\(user, "note_organize"/);
   assert.match(knowledgeGenerateRoute, /runAi\(user, "knowledge_generate"/);
   assert.match(knowledgeImportRoute, /runAi\(user, "knowledge_import"/);
-  assert.match(page, /确认创建/);
+  assert.match(page, /自动创建/);
   assert.match(page, /AI 一键整理/);
 });
