@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.setExtraHTTPHeaders({ "oai-authenticated-user-email": "e2e@careeros.test" });
+});
+
 async function openWorkspace(page: Page) {
   await page.goto("/");
   await page.waitForLoadState("networkidle");
@@ -40,8 +44,9 @@ test("a note can be created, saved after refresh, and moved to trash", async ({ 
   await page.getByRole("button", { name: "✎ 随手记" }).click();
   await expect(page.getByText(title, { exact: true })).toBeVisible();
 
-  const list = await request.get("/api/items");
+  const testUser = { "oai-authenticated-user-email": "e2e@careeros.test" };
+  const list = await request.get("/api/items", { headers: testUser });
   const item = ((await list.json()).items as Array<{ id: string; title: string }>).find((row) => row.title === title);
   expect(item).toBeTruthy();
-  if (item) await request.delete(`/api/items/${encodeURIComponent(item.id)}`);
+  if (item) await request.delete(`/api/items/${encodeURIComponent(item.id)}`, { headers: testUser });
 });

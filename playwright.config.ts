@@ -16,8 +16,8 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 7"], channel: process.env.CI ? undefined : "msedge" } },
   ],
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
+    command: `"${process.execPath}" ./node_modules/vinext/dist/cli.js dev`,
+    url: "http://localhost:3000/api/health",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
