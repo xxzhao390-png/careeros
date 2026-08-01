@@ -87,7 +87,7 @@ test("AI workflows are optional, validated, and rate limited", async () => {
   ]);
 
   assert.match(page, /AI 整理/);
-  assert.match(page, /原文不会被删除/);
+  assert.match(page, /原文保持不变/);
   assert.match(aiService, /AI_NOT_CONFIGURED/);
   assert.match(aiService, /COUNT\(\*\).*ai_runs/);
   assert.match(aiService, /validateJd/);

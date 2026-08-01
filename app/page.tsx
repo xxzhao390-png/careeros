@@ -675,8 +675,6 @@ function ThoughtsView({ items, createItem, updateItem, removeItem, uploadFile, n
     setAiOrganizing(true);
     try{
       const result=await requestAi<NoteAiResult>("/api/v1/ai/notes",content);
-      const preview=[`建议标题：${result.title}`,`摘要：${result.summary||"无"}`,`标签：${result.tags.join("、")||"无"}`,`发现任务候选：${result.taskCandidates.length} 个`].join("\n\n");
-      if(!window.confirm(`${preview}\n\n确认应用这些整理建议吗？原文不会被删除。`))return;
       setTitle(result.title);setNoteType(result.type);setTags(result.tags);
       await updateItem(active.id,{title:result.title,data:{aiSummary:result.summary,aiKeyPoints:result.keyPoints,aiActionItems:result.actionItems,tags:result.tags,type:result.type}});
       const taskCount=await createAiTasks(result.taskCandidates||[]);
