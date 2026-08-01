@@ -77,11 +77,13 @@ test("server routes enforce user ownership", async () => {
 });
 
 test("AI workflows are optional, validated, and rate limited", async () => {
-  const [page, aiService, jdRoute, noteRoute] = await Promise.all([
+  const [page, aiService, jdRoute, noteRoute, knowledgeGenerateRoute, knowledgeImportRoute] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/ai.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/v1/ai/jd/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/v1/ai/notes/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/v1/ai/knowledge/generate/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/v1/ai/knowledge/import/route.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /AI 整理/);
@@ -90,6 +92,12 @@ test("AI workflows are optional, validated, and rate limited", async () => {
   assert.match(aiService, /COUNT\(\*\).*ai_runs/);
   assert.match(aiService, /validateJd/);
   assert.match(aiService, /validateNote/);
+  assert.match(aiService, /validateKnowledge/);
+  assert.match(aiService, /taskCandidates/);
   assert.match(jdRoute, /runAi\(user, "jd_structure"/);
   assert.match(noteRoute, /runAi\(user, "note_organize"/);
+  assert.match(knowledgeGenerateRoute, /runAi\(user, "knowledge_generate"/);
+  assert.match(knowledgeImportRoute, /runAi\(user, "knowledge_import"/);
+  assert.match(page, /确认创建/);
+  assert.match(page, /AI 一键整理/);
 });

@@ -87,7 +87,9 @@ async function requestAi<T>(path: string, input: string): Promise<T> {
 }
 
 type JdAiResult = ReturnType<typeof parseJdText> & { salary?: string; education?: string; experience?: string; responsibilities?: string[]; requirements?: string[]; bonusPoints?: string[]; preparation?: string[] };
-type NoteAiResult = { title: string; summary: string; type: NoteType; tags: string[]; keyPoints: string[]; actionItems: string[] };
+type TaskCandidate = { title:string; description:string; dueAt:string; priority:"low"|"medium"|"high"; category:"工作"|"求职"|"学习"|"项目"|"生活"; confidence:"explicit"|"potential"; evidenceText:string };
+type NoteAiResult = { title: string; summary: string; type: NoteType; tags: string[]; keyPoints: string[]; actionItems: string[]; taskCandidates:TaskCandidate[] };
+type KnowledgeAiResult = { title:string; oneLineDefinition:string; category:string; whyItMatters:string; coreConcepts:Array<{name:string;explanation:string}>; howItWorks:string[]; useCases:string[]; example:string; advantages:string[]; limitations:string[]; commonMistakes:string[]; interviewQuestions:string[]; relatedTopics:string[]; reviewCards:Array<{question:string;answer:string}>; tags:string[]; needsVerification:string[] };
 
 export default function Home() {
   const workspace = useWorkspace();
@@ -512,19 +514,24 @@ function KnowledgeView({ items, createItem, updateItem, removeItem, notify, sele
   const cards = items.filter((item) => item.kind === "knowledge");
   const [selected, setSelected] = useState<WorkspaceItem | null>(selectedItem?.kind === "knowledge" ? selectedItem : null);
   const [question, setQuestion] = useState("");
-  const [draft, setDraft] = useState<{ title: string; summary: string; explanation: string } | null>(null);
+  const [draft, setDraft] = useState<KnowledgeAiResult | null>(null);
   const [editing, setEditing] = useState<WorkspaceItem | null>(null);
+  const [generating,setGenerating]=useState(false); const [importing,setImporting]=useState(false);
 
-  function explain() {
+  async function explain() {
     const value = question.trim();
     if (!value) return notify("先输入你想理解的概念");
-    const title = value.replace(/[？?].*$/, "").slice(0, 28);
-    setDraft({ title, summary: `${title} 可以从“它解决什么问题、在什么场景使用、有什么边界”三个角度理解。`, explanation: `先明确 ${title} 的输入、处理过程与输出，再把它放进一个真实产品场景中验证。这个草稿可继续编辑后保存为知识卡。` });
+    setGenerating(true);
+    try{setDraft(await requestAi<KnowledgeAiResult>("/api/v1/ai/knowledge/generate",value));}
+    catch(cause){notify(cause instanceof Error?cause.message:"AI 知识整理失败");}
+    finally{setGenerating(false);}
   }
+
+  async function importKnowledge(event:FormEvent<HTMLFormElement>){event.preventDefault();const form=new FormData(event.currentTarget);const source=String(form.get("source")||"").trim();if(source.length<20)return notify("请至少粘贴 20 个字");setGenerating(true);try{setDraft(await requestAi<KnowledgeAiResult>("/api/v1/ai/knowledge/import",source));setImporting(false);notify("已整理为知识卡草稿");}catch(cause){notify(cause instanceof Error?cause.message:"AI 知识整理失败");}finally{setGenerating(false);}}
 
   async function saveDraft() {
     if (!draft) return;
-    const item = await createItem({ kind: "knowledge", title: draft.title, data: { level: "刚遇到", tone: "lilac", summary: draft.summary, explanation: draft.explanation, tags: ["待整理"] } });
+    const item = await createItem({ kind: "knowledge", title: draft.title, data: { level: "刚遇到", tone: "lilac", summary: draft.oneLineDefinition, explanation: draft.whyItMatters, ...draft } });
     setDraft(null); setQuestion(""); setSelected(item); notify("知识卡已保存");
   }
 
@@ -540,19 +547,24 @@ function KnowledgeView({ items, createItem, updateItem, removeItem, notify, sele
     <button className="inline-back" type="button" onClick={() => setSelected(null)}>← 返回知识库</button>
     <article className="knowledge-document">
       <header><span className="eyebrow">KNOWLEDGE NOTE</span><h2>{selected.title}</h2><p>{text(selected,"summary")}</p><div><span>{text(selected,"level")}</span>{list(selected,"tags").map((tag)=><span key={tag}>#{tag}</span>)}</div></header>
-      <section><h3>概念解析</h3><p>{text(selected,"explanation") || `${selected.title} 是一个需要继续补充的知识概念。建议从定义、输入输出和应用场景三个方面建立完整理解。`}</p><p>{selected.title} 的价值不只在于记住定义，而是能够判断它解决什么问题、需要哪些前提，以及如何与真实产品或工作流程连接。</p></section>
-      <section><h3>什么时候使用</h3><ul><li>当问题与它的核心能力和输入条件相匹配时。</li><li>当它能比现有方案更清晰地降低成本、提高质量或改善体验时。</li><li>当团队能够验证输出，并为错误结果准备兜底方式时。</li></ul></section>
-      <section><h3>理解边界</h3><blockquote>不要只问“它能做什么”，还要问“它依赖什么、不能保证什么、失败时会发生什么”。</blockquote><p>学习一个技术概念时，把适用条件和限制一起记录，才能把知识真正用于产品判断。</p></section>
-      <section><h3>复习问题</h3><ol><li>请用自己的话解释 {selected.title}。</li><li>它的输入、处理过程和输出分别是什么？</li><li>在什么情况下不应该使用它？</li><li>你能想到哪个真实产品场景？</li></ol></section>
+      <section><h3>为什么重要</h3><p>{text(selected,"whyItMatters")||text(selected,"explanation")}</p></section>
+      {Array.isArray(selected.data.coreConcepts)&&<section><h3>核心概念</h3>{(selected.data.coreConcepts as Array<{name:string;explanation:string}>).map((item)=><div key={item.name}><strong>{item.name}</strong><p>{item.explanation}</p></div>)}</section>}
+      {list(selected,"howItWorks").length>0&&<section><h3>工作原理</h3><ol>{list(selected,"howItWorks").map((item)=><li key={item}>{item}</li>)}</ol></section>}
+      {list(selected,"useCases").length>0&&<section><h3>使用场景</h3><ul>{list(selected,"useCases").map((item)=><li key={item}>{item}</li>)}</ul></section>}
+      {text(selected,"example")&&<section><h3>实际例子</h3><p>{text(selected,"example")}</p></section>}
+      <section><h3>优点与限制</h3><div className="answer-grid"><article><small>优点</small><ul>{list(selected,"advantages").map((item)=><li key={item}>{item}</li>)}</ul></article><article><small>限制</small><ul>{list(selected,"limitations").map((item)=><li key={item}>{item}</li>)}</ul></article></div></section>
+      {list(selected,"commonMistakes").length>0&&<section><h3>常见误区</h3><ul>{list(selected,"commonMistakes").map((item)=><li key={item}>{item}</li>)}</ul></section>}
+      {Array.isArray(selected.data.reviewCards)&&<section><h3>复习卡片</h3><ol>{(selected.data.reviewCards as Array<{question:string;answer:string}>).map((item)=><li key={item.question}><strong>{item.question}</strong><p>{item.answer}</p></li>)}</ol></section>}
     </article>
     <div className="detail-actions"><button type="button" onClick={() => setEditing(selected)}>编辑卡片</button><button className="primary-button" type="button" onClick={() => void updateItem(selected.id,{data:{level:"已理解"}}).then((item)=>{setSelected(item);notify("已更新为已理解");})}><span>标记为已理解</span><span className="button-orb">✓</span></button></div>
     {editing && <Drawer title="编辑知识卡" close={() => setEditing(null)}><form className="editor-form" onSubmit={saveEdit}><Field label="标题"><input name="title" defaultValue={editing.title} /></Field><Field label="掌握程度"><select name="level" defaultValue={text(editing,"level")}><option>刚遇到</option><option>学习中</option><option>能解释</option><option>已理解</option></select></Field><Field label="摘要"><textarea name="summary" defaultValue={text(editing,"summary")} /></Field><Field label="我的解释"><textarea name="explanation" defaultValue={text(editing,"explanation")} /></Field><Field label="标签"><input name="tags" defaultValue={list(editing,"tags").join("，")} /></Field><div className="form-actions"><button className="danger-button" type="button" onClick={() => void removeItem(editing.id).then(()=>{setEditing(null);setSelected(null);notify("知识卡已删除");})}>删除</button><button className="primary-button" type="submit"><span>保存修改</span><span className="button-orb">✓</span></button></div></form></Drawer>}
   </div>;
 
   return <div className="view-stack">
-    <section className="ask-panel knowledge-search-panel"><div className="knowledge-search-copy"><span className="eyebrow">KNOWLEDGE ASSISTANT</span><h2>想理解什么？</h2><p>输入一个概念或问题，从定义、场景和边界开始梳理。</p></div><div className="knowledge-search-side"><div className="ask-box"><span className="ask-symbol" aria-hidden="true">?</span><input value={question} onChange={(event)=>setQuestion(event.target.value)} onKeyDown={(event)=>{if(event.key==="Enter") explain();}} placeholder="输入概念，例如：RAG 和微调有什么区别？" aria-label="知识问题" />{question&&<button className="ask-clear" type="button" aria-label="清空问题" onClick={()=>setQuestion("")}>×</button>}<button className="ask-submit" type="button" onClick={explain} aria-label="生成解释草稿"><span>开始理解</span><i>→</i></button></div><div className="suggestions"><span>可以试试</span>{["MCP 是什么？","Agent 与 Workflow 的区别？"].map((item)=><button type="button" key={item} onClick={()=>setQuestion(item)}>{item}</button>)}</div></div></section>
-    {draft && <section className="panel answer-panel"><PanelHead eyebrow="DRAFT" title={draft.title} /><div className="answer-grid"><article><small>一句话理解</small><p>{draft.summary}</p></article><article><small>理解路径</small><p>{draft.explanation}</p></article></div><div className="detail-actions"><button type="button" onClick={()=>setDraft(null)}>放弃草稿</button><button className="primary-button" type="button" onClick={()=>void saveDraft()}><span>保存为知识卡</span><span className="button-orb">＋</span></button></div></section>}
+    <section className="ask-panel knowledge-search-panel"><div className="knowledge-search-copy"><span className="eyebrow">KNOWLEDGE ASSISTANT</span><h2>想理解什么？</h2><p>输入一个概念或问题，AI 会从定义、场景、原理、边界和复习题完整梳理。</p><button className="secondary-button" type="button" onClick={()=>setImporting(true)}>＋ 粘贴资料整理知识</button></div><div className="knowledge-search-side"><div className="ask-box"><span className="ask-symbol" aria-hidden="true">?</span><input value={question} onChange={(event)=>setQuestion(event.target.value)} onKeyDown={(event)=>{if(event.key==="Enter")void explain();}} placeholder="输入概念，例如：RAG 和微调有什么区别？" aria-label="知识问题" />{question&&<button className="ask-clear" type="button" aria-label="清空问题" onClick={()=>setQuestion("")}>×</button>}<button className="ask-submit" disabled={generating} type="button" onClick={()=>void explain()} aria-label="生成解释草稿"><span>{generating?"正在整理…":"开始理解"}</span><i>→</i></button></div><div className="suggestions"><span>可以试试</span>{["MCP 是什么？","Agent 与 Workflow 的区别？"].map((item)=><button type="button" key={item} onClick={()=>setQuestion(item)}>{item}</button>)}</div></div></section>
+    {draft && <section className="panel answer-panel"><PanelHead eyebrow="AI DRAFT" title={draft.title} /><div className="answer-grid"><article><small>一句话理解</small><p>{draft.oneLineDefinition}</p></article><article><small>为什么重要</small><p>{draft.whyItMatters}</p></article></div><div className="detail-actions"><button type="button" onClick={()=>setDraft(null)}>放弃草稿</button><button className="primary-button" type="button" onClick={()=>void saveDraft()}><span>保存为知识卡</span><span className="button-orb">＋</span></button></div></section>}
     <section className="knowledge-grid">{cards.map((card,index)=><button type="button" className={`knowledge-card knowledge-${text(card,"tone","lilac")}`} key={card.id} onClick={()=>setSelected(card)}><header><span className="card-number">0{index+1}</span><em>{text(card,"level")}</em></header><h3>{card.title}</h3><p>{text(card,"summary")}</p><div className="knowledge-card-tags">{list(card,"tags").map((tag)=><span key={tag}>{tag}</span>)}</div><small>{text(card,"explanation")}</small><b>阅读解析 <i>→</i></b></button>)}</section>
+    {importing&&<Modal title="新建知识" close={()=>setImporting(false)}><form className="editor-form" onSubmit={importKnowledge}><p>粘贴你从文章、课程或聊天中收集的原始文字，AI 会保留原意并整理成结构化知识卡。</p><Field label="原始资料"><textarea name="source" autoFocus rows={14} placeholder="在这里粘贴文字，至少 20 个字……" /></Field><div className="form-actions"><button className="secondary-button" type="button" onClick={()=>setImporting(false)}>取消</button><button className="primary-button" disabled={generating} type="submit"><span>{generating?"正在整理…":"AI 一键整理"}</span><span className="button-orb">✦</span></button></div></form></Modal>}
   </div>;
 }
 
@@ -641,6 +653,7 @@ function ThoughtsView({ items, createItem, updateItem, removeItem, uploadFile, n
   const [tags,setTags]=useState<string[]>([]); const [tagDraft,setTagDraft]=useState("");
   const [saving,setSaving]=useState<"idle"|"saving"|"saved"|"error">("idle");
   const [aiOrganizing,setAiOrganizing]=useState(false);
+  const [taskCandidates,setTaskCandidates]=useState<TaskCandidate[]>([]);
   const [search,setSearch]=useState(""); const [statusFilter,setStatusFilter]=useState<NoteStatus|"all">("all"); const [typeFilter,setTypeFilter]=useState<NoteType|"all">("all");
   const [mobileEditor,setMobileEditor]=useState(Boolean(selectedItem));
   const [selection,setSelection]=useState<{text:string;start:number;end:number;x:number;y:number}|null>(null);
@@ -657,15 +670,17 @@ function ThoughtsView({ items, createItem, updateItem, removeItem, uploadFile, n
   async function permanentlyDelete(item:WorkspaceItem){if(!window.confirm(`永久删除《${item.title||"无标题记录"}》后将无法恢复，确定继续吗？`))return;await removeItem(item.id);notify("记录已永久删除");}
   function selectText(event:React.SyntheticEvent<HTMLTextAreaElement>){const target=event.currentTarget;const value=target.value.slice(target.selectionStart,target.selectionEnd).trim();if(!value)return setSelection(null);const mouse=event.nativeEvent as MouseEvent;setSelection({text:value,start:target.selectionStart,end:target.selectionEnd,x:mouse.clientX||window.innerWidth*.68,y:(mouse.clientY||260)-52});}
   async function createLinkedTask(event:FormEvent<HTMLFormElement>){event.preventDefault();if(!active||!selection)return;const form=new FormData(event.currentTarget);const taskTitle=String(form.get("title")||"").trim();if(!taskTitle)return;const existing=(active.data.taskLinks as Array<Record<string,string>>|undefined)||[];if(existing.some((link)=>link.sourceText===selection.text)){notify("这段文字已经关联任务");return;}try{const task=await createItem({kind:"task",title:taskTitle,data:{dueDate:String(form.get("dueDate")||""),priority:String(form.get("priority")||"medium"),category:String(form.get("category")||"工作"),note:"",done:false,sourceNoteId:active.id,sourceText:selection.text}});await patchNote({linkedTaskIds:[...list(active,"linkedTaskIds"),task.id],taskLinks:[...existing,{taskId:task.id,sourceText:selection.text,createdAt:new Date().toISOString()}]});setTaskDialog(false);setSelection(null);notify("已加入任务");}catch(cause){notify(cause instanceof Error?cause.message:"创建任务失败");}}
+  async function createAiTask(candidate:TaskCandidate){if(!active)return;try{const task=await createItem({kind:"task",title:candidate.title,data:{dueDate:candidate.dueAt,priority:candidate.priority,category:candidate.category,note:candidate.description,done:false,sourceNoteId:active.id,sourceText:candidate.evidenceText,aiGenerated:true}});const existing=(active.data.taskLinks as Array<Record<string,string>>|undefined)||[];await patchNote({linkedTaskIds:[...list(active,"linkedTaskIds"),task.id],taskLinks:[...existing,{taskId:task.id,sourceText:candidate.evidenceText,createdAt:new Date().toISOString()}]});setTaskCandidates((items)=>items.filter((item)=>item!==candidate));notify("任务已创建，并关联原随手记");}catch(cause){notify(cause instanceof Error?cause.message:"创建任务失败");}}
   async function organizeNote(){
     if(!active||content.trim().length<10)return notify("请先输入至少 10 个字，再使用 AI 整理");
     setAiOrganizing(true);
     try{
       const result=await requestAi<NoteAiResult>("/api/v1/ai/notes",content);
-      const preview=[`建议标题：${result.title}`,`摘要：${result.summary||"无"}`,`标签：${result.tags.join("、")||"无"}`,`待办：${result.actionItems.join("；")||"无"}`].join("\n\n");
+      const preview=[`建议标题：${result.title}`,`摘要：${result.summary||"无"}`,`标签：${result.tags.join("、")||"无"}`,`发现任务候选：${result.taskCandidates.length} 个`].join("\n\n");
       if(!window.confirm(`${preview}\n\n确认应用这些整理建议吗？原文不会被删除。`))return;
       setTitle(result.title);setNoteType(result.type);setTags(result.tags);
       await updateItem(active.id,{title:result.title,data:{aiSummary:result.summary,aiKeyPoints:result.keyPoints,aiActionItems:result.actionItems,tags:result.tags,type:result.type}});
+      setTaskCandidates(result.taskCandidates||[]);
       notify("AI 整理结果已应用，原文保持不变");
     }catch(cause){notify(cause instanceof Error?cause.message:"AI 整理失败");}
     finally{setAiOrganizing(false);}
@@ -693,6 +708,7 @@ function ThoughtsView({ items, createItem, updateItem, removeItem, uploadFile, n
     {selection&&<div className="selection-toolbar" style={{left:Math.min(selection.x,window.innerWidth-310),top:Math.max(selection.y,90)}}><button type="button" onClick={()=>setTaskDialog(true)}>＋ 加入任务</button><button type="button" onClick={highlightSelection}>高亮</button><button type="button" onClick={()=>void navigator.clipboard.writeText(selection.text).then(()=>notify("已复制"))}>复制</button></div>}
     {trashOpen&&<Modal title="随手记回收站" close={()=>setTrashOpen(false)}><div className="trash-panel"><p>删除的记录保留在这里；恢复后会回到“待整理”，永久删除后无法找回。</p>{trashedNotes.length?<div className="trash-list">{trashedNotes.map((item)=><article key={item.id}><div><strong>{item.title||"无标题记录"}</strong><span>{text(item,"content").slice(0,100)||"空白记录"}</span><small>删除于 {new Date(text(item,"deletedAt",item.updatedAt)).toLocaleString("zh-CN")}</small></div><div><button type="button" onClick={()=>void restoreNote(item)}>恢复</button><button className="permanent-delete" type="button" onClick={()=>void permanentlyDelete(item)}>永久删除</button></div></article>)}</div>:<div className="trash-empty"><span>○</span><strong>回收站是空的</strong><p>删除的随手记会暂存在这里。</p></div>}</div></Modal>}
     {taskDialog&&selection&&active&&<Modal title="从记录加入任务" close={()=>setTaskDialog(false)}><form className="editor-form" onSubmit={createLinkedTask}><Field label="任务名称"><input name="title" autoFocus defaultValue={selection.text}/></Field><div className="form-grid"><Field label="截止日期"><input name="dueDate" type="date"/></Field><Field label="优先级"><select name="priority" defaultValue="medium"><option value="low">普通</option><option value="medium">重要</option><option value="high">紧急</option></select></Field></div><Field label="所属项目"><select name="category"><option>工作</option><option>求职</option><option>学习</option><option>项目</option><option>生活</option></select></Field><p className="note-source-preview">来源记录：《{active.title}》</p><div className="form-actions"><button type="button" className="secondary-button" onClick={()=>setTaskDialog(false)}>取消</button><button className="primary-button" type="submit"><span>加入任务</span><span className="button-orb">✓</span></button></div></form></Modal>}
+    {taskCandidates.length>0&&active&&<Modal title={`发现 ${taskCandidates.length} 个任务候选`} close={()=>setTaskCandidates([])}><div className="trash-panel"><p>AI 只提供建议。请检查标题、日期和优先级后逐条确认；没有明确日期时不会自动填写。</p><div className="trash-list">{taskCandidates.map((candidate,index)=><article key={`${candidate.title}-${index}`}><div><strong>{candidate.title}</strong><span>{candidate.description||candidate.evidenceText}</span><small>{candidate.confidence==="explicit"?"明确任务":"潜在任务"} · {candidate.category} · {candidate.dueAt||"无截止日期"}</small></div><div><button type="button" onClick={()=>setTaskCandidates((items)=>items.filter((item)=>item!==candidate))}>忽略</button><button className="primary-button" type="button" onClick={()=>void createAiTask(candidate)}>确认创建</button></div></article>)}</div></div></Modal>}
   </div>;
 }
 
