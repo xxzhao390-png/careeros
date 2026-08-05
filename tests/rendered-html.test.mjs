@@ -71,6 +71,8 @@ test("server routes enforce user ownership", async () => {
   assert.match(itemRoute, /WHERE id = \? AND user_id = \?/);
   assert.match(fileRoute, /object_key = \? AND user_id = \?/);
   assert.match(auth, /oai-authenticated-user-email/);
+  assert.match(auth, /careeros_visitor/);
+  assert.match(auth, /anonymous\.careeros/);
   assert.match(auth, /schemaPromise/);
   assert.match(auth, /duplicate column name/);
   assert.doesNotMatch(itemsRoute, /payload\.userId|payload\.user_id/);

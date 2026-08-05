@@ -3,6 +3,9 @@ import { expect, test } from "@playwright/test";
 const userA = { "x-careeros-dev-user": "e2e-user-a@careeros.test" };
 const userB = { "x-careeros-dev-user": "e2e-user-b@careeros.test" };
 
+const anonymousA = { cookie: "careeros_visitor=11111111-1111-4111-8111-111111111111" };
+const anonymousB = { cookie: "careeros_visitor=22222222-2222-4222-8222-222222222222" };
+
 test("API supports CRUD and isolates two users", async ({ request }) => {
   const marker = `E2E-${Date.now()}`;
   const created = await request.post("/api/items", {
@@ -48,4 +51,22 @@ test("AI endpoints fail safely when no model is configured", async ({ request })
   });
   expect(response.status()).toBe(503);
   expect((await response.json()).code).toBe("AI_NOT_CONFIGURED");
+});
+
+test("anonymous visitors can use isolated workspaces without signing in", async ({ request }) => {
+  const marker = `ANON-${Date.now()}`;
+  const created = await request.post("/api/items", {
+    headers: anonymousA,
+    data: { kind: "thought", title: marker, data: { content: "匿名访问测试" } },
+  });
+  expect(created.status()).toBe(201);
+  const item = (await created.json()).item as { id: string };
+
+  const ownList = await request.get("/api/items", { headers: anonymousA });
+  expect(((await ownList.json()).items as Array<{ id: string }>).some((row) => row.id === item.id)).toBeTruthy();
+
+  const otherList = await request.get("/api/items", { headers: anonymousB });
+  expect(((await otherList.json()).items as Array<{ id: string }>).some((row) => row.id === item.id)).toBeFalsy();
+
+  await request.delete(`/api/items/${encodeURIComponent(item.id)}`, { headers: anonymousA });
 });

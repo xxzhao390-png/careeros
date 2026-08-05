@@ -5,10 +5,20 @@ export type AuthenticatedUser = { id: string; email: string; displayName: string
 function identityFrom(request: Request) {
   const email = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
   const url = new URL(request.url);
-  const localEmail = url.hostname === "localhost" || url.hostname === "127.0.0.1"
-    ? request.headers.get("x-careeros-dev-user")?.trim().toLowerCase() || "local@careeros.dev"
+  const anonymousCookie = request.headers.get("cookie")
+    ?.split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("careeros_visitor="))
+    ?.slice("careeros_visitor=".length);
+  const anonymousId = anonymousCookie && /^[0-9a-f-]{36}$/i.test(anonymousCookie)
+    ? anonymousCookie.toLowerCase()
     : null;
-  const resolvedEmail = email || localEmail;
+  const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  const localEmail = isLocal ? request.headers.get("x-careeros-dev-user")?.trim().toLowerCase() : null;
+  const resolvedEmail = email
+    || localEmail
+    || (anonymousId ? `visitor-${anonymousId}@anonymous.careeros` : null)
+    || (isLocal ? "local@careeros.dev" : null);
   if (!resolvedEmail) return null;
   const encodedName = request.headers.get("oai-authenticated-user-full-name");
   let displayName = resolvedEmail.split("@")[0];
@@ -62,7 +72,7 @@ export function ensureMvpSchema() {
 export async function authenticate(request: Request): Promise<AuthenticatedUser | Response> {
   const identity = identityFrom(request);
   if (!identity) {
-    return Response.json({ error: "请先登录后再使用 CareerOS", code: "UNAUTHORIZED" }, { status: 401 });
+    return Response.json({ error: "正在初始化匿名工作台，请刷新后重试", code: "VISITOR_ID_REQUIRED" }, { status: 401 });
   }
   await ensureMvpSchema();
   const id = await userIdFor(identity.email);

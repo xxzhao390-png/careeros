@@ -11,6 +11,13 @@ async function readJson<T>(response: Response): Promise<T> {
   return body;
 }
 
+function ensureVisitorCookie() {
+  if (typeof document === "undefined") return;
+  if (document.cookie.split(";").some((part) => part.trim().startsWith("careeros_visitor="))) return;
+  const visitorId = crypto.randomUUID();
+  document.cookie = `careeros_visitor=${visitorId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+}
+
 export function useWorkspace() {
   const [items, setItems] = useState<WorkspaceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +37,7 @@ export function useWorkspace() {
   }, []);
 
   useEffect(() => {
+    ensureVisitorCookie();
     const controller = new AbortController();
     queueMicrotask(() => {
       if (!controller.signal.aborted) void refresh();
